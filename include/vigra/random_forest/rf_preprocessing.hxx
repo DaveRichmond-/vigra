@@ -37,8 +37,10 @@
 #define VIGRA_RF_PREPROCESSING_HXX
 
 #include <limits>
-#include <vigra/mathutil.hxx>
+//#include <vigra/mathutil.hxx>
 #include "rf_common.hxx"
+
+//#include <vigra/random_forest/features.hxx>
 
 namespace vigra
 {
@@ -108,8 +110,8 @@ namespace detail
                 break;
             case RF_PROPORTIONAL:
                 ext_param.actual_msample_ =
-                    static_cast<int>(std::ceil(options.training_set_proportion_ *
-                                               ext_param.row_count_));
+                    (int)std::ceil(  options.training_set_proportion_ *
+                                     ext_param.row_count_);
                     break;
             case RF_FUNCTION:
                 ext_param.actual_msample_ =
@@ -121,30 +123,56 @@ namespace detail
         }
 
     }
-    
+
+    // old version?
     /* Returns true if MultiArray contains NaNs
-     */
+         */
     template<unsigned int N, class T, class C>
     bool contains_nan(MultiArrayView<N, T, C> const & in)
     {
         for(int ii = 0; ii < in.size(); ++ii)
-            if(isnan(in[ii]))
+            if(in[ii] != in[ii])
                 return true;
-        return false; 
+        return false;
     }
-    
+
     /* Returns true if MultiArray contains Infs
-     */
+         */
     template<unsigned int N, class T, class C>
     bool contains_inf(MultiArrayView<N, T, C> const & in)
     {
-         if(!std::numeric_limits<T>::has_infinity)
-             return false;
-         for(int ii = 0; ii < in.size(); ++ii)
-            if(abs(in[ii]) == std::numeric_limits<T>::infinity())
+        if(!std::numeric_limits<T>::has_infinity)
+            return false;
+        for(int ii = 0; ii < in.size(); ++ii)
+            if(in[ii] == std::numeric_limits<T>::infinity())
                 return true;
-         return false;
+        return false;
     }
+
+// hide
+//    /* Returns true if MultiArray contains NaNs
+//     */
+//    template<unsigned int N, class T, class C>
+//    bool contains_nan(MultiArrayView<N, T, C> const & in)
+//    {
+//        for(int ii = 0; ii < in.size(); ++ii)
+//            if(isnan(in[ii]))
+//                return true;
+//        return false;
+//    }
+    
+//    /* Returns true if MultiArray contains Infs
+//     */
+//    template<unsigned int N, class T, class C>
+//    bool contains_inf(MultiArrayView<N, T, C> const & in)
+//    {
+//         if(!std::numeric_limits<T>::has_infinity)
+//             return false;
+//         for(int ii = 0; ii < in.size(); ++ii)
+//            if(abs(in[ii]) == std::numeric_limits<T>::infinity())
+//                return true;
+//         return false;
+//    }
 } // namespace detail
 
 
@@ -158,21 +186,21 @@ template<class LabelType, class T1, class C1, class T2, class C2>
 class Processor<ClassificationTag, LabelType, T1, C1, T2, C2>
 {
     public:
-    typedef Int32 LabelInt;
-    typedef MultiArrayView<2, T1, C1> Feature_t;
-    typedef MultiArray<2, T1> FeatureWithMemory_t;
-    typedef MultiArrayView<2,LabelInt> Label_t;
-    MultiArrayView<2, T1, C1>const &    features_;
+    typedef Int32                       LabelInt;
+    typedef MultiArrayView<2, T1, C1>   Feature_t;
+    typedef MultiArray<2, T1>           FeatureWithMemory_t;
+    typedef MultiArrayView<2,LabelInt>  Label_t;
+    MultiArrayView<2, T1, C1> const &   features_;
     MultiArray<2, LabelInt>             intLabels_;
     MultiArrayView<2, LabelInt>         strata_;
 
     template<class T>
-    Processor(MultiArrayView<2, T1, C1>const & features,   
-              MultiArrayView<2, T2, C2>const & response,
-              RandomForestOptions &options,         
-              ProblemSpec<T> &ext_param)
+    Processor(MultiArrayView<2, T1, C1>       const & features,
+              MultiArrayView<2, T2, C2> const & response,
+              RandomForestOptions             & options,
+              ProblemSpec<T>                  & ext_param)
     :
-        features_( features) // do not touch the features. 
+        features_(features) // do not touch the features.
     {
         vigra_precondition(!detail::contains_nan(features), "RandomForest(): Feature matrix "
                                                            "contains NaNs");
@@ -214,7 +242,7 @@ class Processor<ClassificationTag, LabelType, T1, C1, T2, C2>
         if(ext_param.class_weights_.size() == 0)
         {
             ArrayVector<T2> 
-                tmp(static_cast<std::size_t>(ext_param.class_count_),
+                tmp((std::size_t)ext_param.class_count_, 
                     NumericTraits<T2>::one());
             ext_param.class_weights(tmp.begin(), tmp.end());
         }
@@ -255,8 +283,6 @@ class Processor<ClassificationTag, LabelType, T1, C1, T2, C2>
         return ArrayVectorView< double>();
     }
 };
-
-
 
 /** Regression Preprocessor - This basically does not do anything with the
  * data.

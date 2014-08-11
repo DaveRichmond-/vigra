@@ -51,6 +51,9 @@
 #include "rf_common.hxx"
 #include "rf_visitors.hxx"
 #include "rf_nodeproxy.hxx"
+
+//#include "vigra/random_forest/features.hxx"
+
 namespace vigra
 {
 
@@ -162,21 +165,53 @@ class DecisionTree
      */
     template<class U, class C, class Visitor_t>
     TreeInt getToLeaf(MultiArrayView<2, U, C> const & features, 
+    // hide
+                      //                      int const & row,
                       Visitor_t  & visitor) const
     {
         TreeInt index = 2;
         while(!isLeafNode(topology_[index]))
         {
-            visitor.visit_internal_node(*this, index, topology_[index],features);
+            visitor.visit_internal_node(*this, index, topology_[index], features);
             switch(topology_[index])
             {
                 case i_ThresholdNode:
                 {
                     Node<i_ThresholdNode> 
                                 node(topology_, parameters_, index);
+
+                    // hide
+//                    // now i'm at a specific node, can create the corresponding features, using feature_type
+//                    // AGAIN, HARD-CODE A FEW THINGS FOR NOW
+//                    Shape2 im_shape(1024,1024);
+//                    int feature_type = 0;
+//                                        int feature_type = node.feature_type();
+
+//                    FeatureBase<U,C> * comp_features = nullptr;
+//                    switch(feature_type)
+//                    {
+//                    case 0:
+//                    {
+//                        comp_features = new NormalFeatures<U,C>(features, im_shape);
+//                    }   break;
+//                    case 1:
+//                    {
+//                        comp_features = new OffsetFeatures<U,C>(features, im_shape, node.offset_x(), node.offset_y());
+//                    }   break;
+//                    case 2:
+//                    {
+//                        comp_features = new DiffFeatures<U,C>(features, im_shape, node.offset_x(), node.offset_y());
+//                    }   break;
+//                    }
+
                     index = node.next(features);
+
+                    // hide
+//                    index = node.next(*comp_features, row);
+//                    delete comp_features;
                     break;
                 }
+                // kill HyperplaneNode and HypersphereNode for now, because I don't use them, and don't want to update for new feature types
                 case i_HyperplaneNode:
                 {
                     Node<i_HyperplaneNode> 
@@ -282,17 +317,24 @@ class DecisionTree
 
     /* same thing as above, without any visitors */
     template<class U, class C>
+    // hide
+//    TreeInt getToLeaf(MultiArrayView<2, U, C> const & features, int const & row) const
     TreeInt getToLeaf(MultiArrayView<2, U, C> const & features) const
     {
         ::vigra::rf::visitors::StopVisiting stop;
+        // hide
+        // return getToLeaf(features, row, stop);
         return getToLeaf(features, stop);
     }
 
 
     template <class U, class C>
     ArrayVector<double>::iterator
+    // hide
+    // predict(MultiArrayView<2, U, C> const & features, int const & row) const
     predict(MultiArrayView<2, U, C> const & features) const
     {
+        // hide: TreeInt nodeindex = getToLeaf(features, row);
         TreeInt nodeindex = getToLeaf(features);
         switch(topology_[nodeindex])
         {
@@ -316,6 +358,13 @@ class DecisionTree
     }
 
 
+    // hide
+//    template <class U, class C>
+//    Int32 predictLabel(MultiArrayView<2, U, C> const & features, int const & row) const
+//    {
+//        ArrayVector<double>::const_iterator weights = predict(features, row);
+//        return argMax(weights, weights+classCount_) - weights;
+//    }
 
     template <class U, class C>
     Int32 predictLabel(MultiArrayView<2, U, C> const & features) const
@@ -357,15 +406,15 @@ template <  class U, class C,
             class Split_t,
             class Visitor_t,
             class Random_t>
-void DecisionTree::continueLearn(   MultiArrayView<2, U, C> const       & features,
-                            MultiArrayView<2, U2, C2> const     & labels,
-                            StackEntry_t const &                  stack_entry,
-                            Split_t                               split,
-                            Stop_t                                stop,
-                            Visitor_t &                           visitor,
-                            Random_t &                            randint,
-                            //an index to which the last created exterior node will be moved (because it is not used anymore)
-                            int                                   garbaged_child)
+void DecisionTree::continueLearn(MultiArrayView<2, U, C> const       & features,
+                                 MultiArrayView<2, U2, C2> const     & labels,
+                                 StackEntry_t const &                  stack_entry,
+                                 Split_t                               split,
+                                 Stop_t                                stop,
+                                 Visitor_t &                           visitor,
+                                 Random_t &                            randint,
+                                 //an index to which the last created exterior node will be moved (because it is not used anymore)
+                                 int                                   garbaged_child)
 {
     std::vector<StackEntry_t> stack;
     stack.reserve(128);

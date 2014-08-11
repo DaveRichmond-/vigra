@@ -46,6 +46,7 @@
 #include "vigra/random.hxx"
 #include "vigra/functorexpression.hxx"
 
+//#include "vigra/random_forest/features.hxx"
 
 namespace vigra
 {
@@ -106,8 +107,9 @@ class NodeBase
 
         // Node Parameters
     bool                                        hasData_;
-
-
+//    int                                         feature_type_;
+//    int                                         offset_x_;
+//    int                                         offset_y_;
 
 
     /** get Node Weight
@@ -411,6 +413,20 @@ class Node<i_ThresholdNode>
         :   BT(5, 2, node_) 
     {}
 
+//    // get the feature type, and offsets
+//    int & feature_type()
+//    {
+//        return BT::feature_type_;
+//    }
+//    int & offset_x()
+//    {
+//        return BT::offset_x_;
+//    }
+//    int & offset_y()
+//    {
+//        return BT::offset_y_;
+//    }
+
     double& threshold()
     {
         return BT::parameters_begin()[1];
@@ -435,6 +451,14 @@ class Node<i_ThresholdNode>
     {
         return (feature(0, column()) < threshold())? child(0):child(1);
     }
+
+// hide for now
+//    template<class U, class C>
+//    BT::INT  next(FeatureBase<U,C> const & comp_features, int const & row) const
+//    {
+//        return (comp_features(row, column()) < threshold())? child(0):child(1);
+//    }
+
 };
 
 

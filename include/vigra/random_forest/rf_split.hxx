@@ -51,6 +51,8 @@
 //#include "../hokashyap.hxx"
 //#include "vigra/rf_helpers.hxx"
 
+//#include <vigra/random_forest/features.hxx>
+
 namespace vigra
 {
 
@@ -97,7 +99,7 @@ class SplitBase
     typedef DT_StackEntry<ArrayVectorView<Int32>::iterator>
                                         StackEntry_t;
 
-    ProblemSpec<>           ext_param_;
+    ProblemSpec<>                       ext_param_;
 
     NodeBase::T_Container_type          t_data;
     NodeBase::P_Container_type          p_data;
@@ -165,10 +167,10 @@ class SplitBase
         the class histogram
     **/
     template<class T, class C, class T2,class C2, class Region, class Random>
-    int makeTerminalNode(MultiArrayView<2, T, C>    /* features */,
-                         MultiArrayView<2, T2, C2>  /* labels */,
-                         Region &                   region,
-                         Random                     /* randint */)
+    int makeTerminalNode(MultiArrayView<2, T, C>   features,
+                         MultiArrayView<2, T2, C2> labels,
+                         Region &                  region,
+                         Random                    randint)
     {
         Node<e_ConstProbNode> ret(t_data, p_data);
         node_ = ret;
@@ -191,7 +193,6 @@ class SplitBase
         ret.weights() = region.size();  
         return e_ConstProbNode;
     }
-
 
 };
 
@@ -886,18 +887,30 @@ public:
      *                the left and right regions. 
      */
     template<   class DataSourceF_t,
-                class DataSource_t, 
+                class DataSource_t,
                 class I_Iter, 
                 class Array>
-    void operator()(DataSourceF_t   const & column,
+/* hide for now
+    void operator()(DataSourceF_t   const & comp_features,
+                    Int32                   feat_index,
                     DataSource_t    const & labels,
                     I_Iter                & begin, 
                     I_Iter                & end,
                     Array           const & region_response)
+*/
+    void operator()(DataSourceF_t   const & column,
+                    DataSource_t    const & labels,
+                    I_Iter                & begin,
+                    I_Iter                & end,
+                    Array           const & region_response)
+
     {
-        std::sort(begin, end, 
+// hide for now
+//        std::sort(begin, end,
+//                  SortSamplesByDimensions<DataSourceF_t>(comp_features, feat_index));
+        std::sort(begin, end,
                   SortSamplesByDimensions<DataSourceF_t>(column, 0));
-        typedef typename 
+        typedef typename
             LossTraits<LineSearchLossTag, DataSource_t>::type LineSearchLoss;
         LineSearchLoss left(labels, ext_param_); //initialize left and right region
         LineSearchLoss right(labels, ext_param_);
@@ -907,8 +920,10 @@ public:
         min_gini_ = right.init(begin, end, region_response);  
         min_threshold_ = *begin;
         min_index_     = 0;  //the starting point where to split 
-        DimensionNotEqual<DataSourceF_t> comp(column, 0); 
-        
+// hide for now
+//        DimensionNotEqual<DataSourceF_t> comp(comp_features, feat_index);
+        DimensionNotEqual<DataSourceF_t> comp(column, 0);
+
         I_Iter iter = begin;
         I_Iter next = std::adjacent_find(iter, end, comp);
         //std::cerr << std::distance(begin, end) << std::endl;
@@ -916,7 +931,7 @@ public:
         {
             double lr  =  right.decrement(iter, next + 1);
             double ll  =  left.increment(iter , next + 1);
-            double loss = lr +ll;
+            double loss = lr + ll;
             //std::cerr <<lr << " + "<< ll << " " << loss << " ";
 #ifdef CLASSIFIER_TEST
             if(loss < min_gini_ && !closeAtTolerance(loss, min_gini_))
@@ -932,6 +947,8 @@ public:
                 min_gini_       = loss; 
 #endif
                 min_index_      = next - begin +1 ;
+                // hide for now
+//                min_threshold_  = (double(comp_features(*next,feat_index)) + double(comp_features(*(next +1), feat_index)))/2.0;
                 min_threshold_  = (double(column(*next,0)) + double(column(*(next +1), 0)))/2.0;
             }
             iter = next +1 ;
@@ -1002,7 +1019,7 @@ class ThresholdSplit: public SplitBase<Tag>
 
     double                      region_gini_;
     ArrayVector<double>         min_gini_;
-    ArrayVector<std::ptrdiff_t>      min_indices_;
+    ArrayVector<std::ptrdiff_t> min_indices_;
     ArrayVector<double>         min_thresholds_;
 
     int                         bestSplitIndex;
@@ -1061,23 +1078,70 @@ class ThresholdSplit: public SplitBase<Tag>
         if(region_gini_ <= SB::ext_param_.precision_)
             return  this->makeTerminalNode(features, labels, region, randint);
 
-        // select columns  to be tried.
+        // select columns to be tried.
         for(int ii = 0; ii < SB::ext_param_.actual_mtry_; ++ii)
             std::swap(splitColumns[ii], 
                       splitColumns[ii+ randint(features.shape(1) - ii)]);
 
+
+// hide for now
+//        // select which type of features to calculate: NormalFeatures, OffsetFeatures, DiffFeatures
+
+//        // HARD-CODE A FEW THINGS FOR NOW.  LATER, ADD MAX_OFFSET AS AN OPTION INTO THE RANDOM FOREST OPTIONS OBJECT.  NOT SURE WHERE TO ADD IM_SHAPE_
+//        int feature_type = randint(3);  // uniform probability between the three options
+//        int max_offset_x = 300;
+//        int max_offset_y = 300;
+//        Shape2 im_shape(1024, 1024);
+
+//        // TEST!!
+//        feature_type = 0;
+
+//        // randomly select xy-offset into image
+//        int offset_x = randint(2*max_offset_x + 1) - max_offset_x;
+//        int offset_y = randint(2*max_offset_y + 1) - max_offset_y;
+
+//        FeatureBase<T,C> * comp_features = nullptr;
+
+//        switch(feature_type)
+//        {
+//        case 0:
+//        {
+//            comp_features = new NormalFeatures<T,C>(features, im_shape);
+//        }   break;
+//        case 1:
+//        {
+//            comp_features = new OffsetFeatures<T,C>(features, im_shape, offset_x, offset_y);
+//        }   break;
+//        case 2:
+//        {
+//            comp_features = new DiffFeatures<T,C>(features, im_shape, offset_x, offset_y);
+//        }   break;
+//        }
+
         // find the best gini index
         bestSplitIndex              = 0;
         double  current_min_gini    = region_gini_;
+        // hide for now
+//        int     num2try             = (*comp_features).shape(1);
         int     num2try             = features.shape(1);
         for(int k=0; k<num2try; ++k)
         {
             //this functor does all the work
-            bgfunc(columnVector(features, splitColumns[k]),
-                   labels, 
-                   region.begin(), region.end(), 
+            // hide for now
+            /*
+            bgfunc(*comp_features,
+                   splitColumns[k],
+                   labels,
+                   region.begin(), region.end(),
                    region.classCounts());
-            min_gini_[k]            = bgfunc.min_gini_; 
+*/
+            bgfunc(columnVector(features, splitColumns[k]),
+                   labels,
+                   region.begin(), region.end(),
+                   region.classCounts());
+
+
+            min_gini_[k]            = bgfunc.min_gini_;
             min_indices_[k]         = bgfunc.min_index_;
             min_thresholds_[k]      = bgfunc.min_threshold_;
 #ifdef CLASSIFIER_TEST
@@ -1100,17 +1164,28 @@ class ThresholdSplit: public SplitBase<Tag>
         //std::cerr << current_min_gini << "curr " << region_gini_ << std::endl;
         // did not find any suitable split
         if(closeAtTolerance(current_min_gini, region_gini_))
-            return  this->makeTerminalNode(features, labels, region, randint);
+            return  this->makeTerminalNode(features, labels, region, randint);      // doesn't actually use features, so i left this alone
         
         //create a Node for output
         Node<i_ThresholdNode>   node(SB::t_data, SB::p_data);
         SB::node_ = node;
         node.threshold()    = min_thresholds_[bestSplitIndex];
         node.column()       = splitColumns[bestSplitIndex];
-        
-        // partition the range according to the best dimension 
-        SortSamplesByDimensions<MultiArrayView<2, T, C> > 
+        // also store the feature type, for look-up in the prediction phase
+//        node.feature_type() = feature_type;
+//        // store offsets in node
+//        if (feature_type != 0){
+//            node.offset_x() = offset_x;
+//            node.offset_y() = offset_y;
+//        }
+
+        // partition the range according to the best dimension
+        // hide for now
+//        SortSamplesByDimensions<FeatureBase<T, C> >
+//            sorter(*comp_features, node.column(), node.threshold());
+        SortSamplesByDimensions<MultiArrayView<2, T, C> >
             sorter(features, node.column(), node.threshold());
+
         IndexIterator bestSplit =
             std::partition(region.begin(), region.end(), sorter);
         // Save the ranges of the child stack entries.
@@ -1121,12 +1196,16 @@ class ThresholdSplit: public SplitBase<Tag>
         childRegions[1].rule = region.rule;
         childRegions[1].rule.push_back(std::make_pair(1, 1.0));
 
+        // clear dynamically allocated memory
+        // hide for now
+//        delete comp_features;
+
         return i_ThresholdNode;
     }
 };
 
 typedef  ThresholdSplit<BestGiniOfColumn<GiniCriterion> >                      GiniSplit;
-typedef  ThresholdSplit<BestGiniOfColumn<EntropyCriterion> >                 EntropySplit;
+typedef  ThresholdSplit<BestGiniOfColumn<EntropyCriterion> >                   EntropySplit;
 typedef  ThresholdSplit<BestGiniOfColumn<LSQLoss>, RegressionTag>              RegressionSplit;
 
 namespace rf
