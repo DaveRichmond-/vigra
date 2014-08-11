@@ -6,7 +6,9 @@ cmake_minimum_required(VERSION 2.6)
 #
 ##################################################
 
-PROJECT(vigra)
+PROJECT(my_vigra)
+
+message("Vigra source directory:" ${vigra_SOURCE_DIR})
 
 # read the current version from config_version.hxx
 file(READ ${vigra_SOURCE_DIR}/include/vigra/config_version.hxx VIGRA_VERSION_FILE)
@@ -28,6 +30,14 @@ include(VigraCMakeUtils)
 include(VigraConfigureThreading)
 
 INCLUDE_DIRECTORIES(${vigra_SOURCE_DIR}/include)
+#SET(vigra_INC include/vigra/accessor.hxx)
+FILE(GLOB vigra_Headers
+     ${vigra_SOURCE_DIR}/include/vigra/dummy.cxx
+     ${vigra_SOURCE_DIR}/include/vigra/*.hxx
+     ${vigra_SOURCE_DIR}/include/vigra/random_forest/*.hxx
+     ${vigra_SOURCE_DIR}/include/vigra/delegate/*.hxx
+     ${vigra_SOURCE_DIR}/include/vigra/delegate/detail/*.hxx)
+add_library(vigra SHARED ${vigra_Headers})
 
 IF(VIGRA_STATIC_LIB)
     SET(LIBTYPE STATIC)
