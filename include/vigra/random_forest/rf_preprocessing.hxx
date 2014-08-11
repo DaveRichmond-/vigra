@@ -40,7 +40,7 @@
 //#include <vigra/mathutil.hxx>
 #include "rf_common.hxx"
 
-//#include <vigra/random_forest/features.hxx>
+#include <vigra/random_forest/features.hxx>
 
 namespace vigra
 {
@@ -124,57 +124,31 @@ namespace detail
 
     }
 
-    // old version?
     /* Returns true if MultiArray contains NaNs
-         */
+     */
     template<unsigned int N, class T, class C>
     bool contains_nan(MultiArrayView<N, T, C> const & in)
     {
         for(int ii = 0; ii < in.size(); ++ii)
-            if(in[ii] != in[ii])
+            if(isnan(in[ii]))
                 return true;
         return false;
     }
-
+    
     /* Returns true if MultiArray contains Infs
-         */
+     */
     template<unsigned int N, class T, class C>
     bool contains_inf(MultiArrayView<N, T, C> const & in)
     {
-        if(!std::numeric_limits<T>::has_infinity)
-            return false;
-        for(int ii = 0; ii < in.size(); ++ii)
-            if(in[ii] == std::numeric_limits<T>::infinity())
+         if(!std::numeric_limits<T>::has_infinity)
+             return false;
+         for(int ii = 0; ii < in.size(); ++ii)
+            if(abs(in[ii]) == std::numeric_limits<T>::infinity())
                 return true;
-        return false;
+         return false;
     }
 
-// hide
-//    /* Returns true if MultiArray contains NaNs
-//     */
-//    template<unsigned int N, class T, class C>
-//    bool contains_nan(MultiArrayView<N, T, C> const & in)
-//    {
-//        for(int ii = 0; ii < in.size(); ++ii)
-//            if(isnan(in[ii]))
-//                return true;
-//        return false;
-//    }
-    
-//    /* Returns true if MultiArray contains Infs
-//     */
-//    template<unsigned int N, class T, class C>
-//    bool contains_inf(MultiArrayView<N, T, C> const & in)
-//    {
-//         if(!std::numeric_limits<T>::has_infinity)
-//             return false;
-//         for(int ii = 0; ii < in.size(); ++ii)
-//            if(abs(in[ii]) == std::numeric_limits<T>::infinity())
-//                return true;
-//         return false;
-//    }
 } // namespace detail
-
 
 
 /** Preprocessor used during Classification

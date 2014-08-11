@@ -61,7 +61,7 @@
 #include "random_forest/rf_earlystopping.hxx"
 #include "random_forest/rf_ridge_split.hxx"
 
-//#include <vigra/random_forest/features.hxx>
+#include <vigra/random_forest/features.hxx>
 
 namespace vigra
 {
@@ -830,9 +830,9 @@ void RandomForest<LabelType, PreprocessorTag>::onlineLearn(  MultiArrayView<2,U,
             int sample=poisson_sampler[s];
             online_visitor_.current_label=preprocessor.response()(sample,0);
             online_visitor_.last_node_id=StackEntry_t::DecisionTreeNoParent;
-            // hide
-            //            int leaf=trees_[ii].getToLeaf(features, sample, online_visitor_);
-            int leaf=trees_[ii].getToLeaf(rowVector(features, sample), online_visitor_);
+
+            int leaf=trees_[ii].getToLeaf(features, sample, online_visitor_);
+//            int leaf=trees_[ii].getToLeaf(rowVector(features, sample), online_visitor_);
 
             //Add to the list for that leaf
             online_visitor_.add_to_index_list(ii,leaf,sample);
@@ -1449,9 +1449,8 @@ void RandomForest<LabelType, PreprocessorTag>
     for(int row=0; row < rowCount(features); ++row)
     {
 
-        // hide
         // remove the use of currentRow.  can't apply test for NaN's, since we don't know yet which offsets will be used in the tree
-
+        /*
         MultiArrayView<2, U, StridedArrayTag> currentRow(rowVector(features, row));
         
         // when the features contain an NaN, the instance doesn't belong to any class
@@ -1461,7 +1460,7 @@ void RandomForest<LabelType, PreprocessorTag>
             rowVector(prob, row).init(0.0);
             continue;
         }
-
+        */
 
         ArrayVector<double>::const_iterator weights;
 
@@ -1472,9 +1471,8 @@ void RandomForest<LabelType, PreprocessorTag>
         for(int k=0; k<options_.tree_count_; ++k)
         {
             //get weights predicted by single tree
-            // hide
-//            weights = trees_[k /*tree_indices_[k]*/].predict(features, row);
-            weights = trees_[k /*tree_indices_[k]*/].predict(currentRow);
+            weights = trees_[k /*tree_indices_[k]*/].predict(features, row);
+//            weights = trees_[k /*tree_indices_[k]*/].predict(currentRow);
 
             //update votecount.
             int weighted = options_.predict_weighted_;

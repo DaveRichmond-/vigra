@@ -931,9 +931,8 @@ class OOB_Error : public VisitorBase
                 ++total_oob; 
 
                 // get the predicted votes ---> tmp_prob;
-                int pos =  rf.tree(index).getToLeaf(rowVector(pr.features(),oob_indices[ll]));
-                // hide
-//                int pos =  rf.tree(index).getToLeaf(pr.features(), oob_indices[ll]);
+//                int pos =  rf.tree(index).getToLeaf(rowVector(pr.features(),oob_indices[ll]));
+                int pos =  rf.tree(index).getToLeaf(pr.features(), oob_indices[ll]);
 
                 Node<e_ConstProbNode> node ( rf.tree(index).topology_,
                                                     rf.tree(index).parameters_,
@@ -965,9 +964,8 @@ class OOB_Error : public VisitorBase
                     ++total_oob;
 
                     // get the predicted votes ---> tmp_prob;
-                    int pos =  rf.tree(index).getToLeaf(rowVector(pr.features(),ll));
-                    // hide
-//                    int pos =  rf.tree(index).getToLeaf(pr.features(), ll);
+//                    int pos =  rf.tree(index).getToLeaf(rowVector(pr.features(),ll));
+                    int pos =  rf.tree(index).getToLeaf(pr.features(), ll);
 
                     Node<e_ConstProbNode> node ( rf.tree(index).topology_, 
                                                         rf.tree(index).parameters_,
@@ -1372,13 +1370,12 @@ class VariableImportanceVisitor : public VisitorBase
             iter != oob_indices.end(); 
             ++iter)
         {
-            if(rf.tree(index)
-                    .predictLabel(rowVector(features, *iter))
-                    ==  pr.response()(*iter, 0))
-// hide
 //            if(rf.tree(index)
-//                    .predictLabel(features, *iter)
-//                ==  pr.response()(*iter, 0))
+//                    .predictLabel(rowVector(features, *iter))
+//                    ==  pr.response()(*iter, 0))
+            if(rf.tree(index)
+                    .predictLabel(features, *iter)
+                ==  pr.response()(*iter, 0))
 
             {
                 //per class
@@ -1414,14 +1411,13 @@ class VariableImportanceVisitor : public VisitorBase
                     iter != oob_indices.end(); 
                     ++iter)
                 {
-                    // hide
-//                    if(rf.tree(index)
-//                            .predictLabel(features, *iter)
-//                        ==  pr.response()(*iter, 0))
-
                     if(rf.tree(index)
-                            .predictLabel(rowVector(features, *iter))
+                            .predictLabel(features, *iter)
                         ==  pr.response()(*iter, 0))
+
+//                    if(rf.tree(index)
+//                            .predictLabel(rowVector(features, *iter))
+//                        ==  pr.response()(*iter, 0))
                     {
                         //per class
                         ++perm_oob_right[pr.response()(*iter, 0)];

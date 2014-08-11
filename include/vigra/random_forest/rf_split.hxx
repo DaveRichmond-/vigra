@@ -51,7 +51,7 @@
 //#include "../hokashyap.hxx"
 //#include "vigra/rf_helpers.hxx"
 
-//#include <vigra/random_forest/features.hxx>
+#include <vigra/random_forest/features.hxx>
 
 namespace vigra
 {
@@ -890,26 +890,23 @@ public:
                 class DataSource_t,
                 class I_Iter, 
                 class Array>
-/* hide for now
     void operator()(DataSourceF_t   const & comp_features,
                     Int32                   feat_index,
                     DataSource_t    const & labels,
                     I_Iter                & begin, 
                     I_Iter                & end,
                     Array           const & region_response)
-*/
-    void operator()(DataSourceF_t   const & column,
-                    DataSource_t    const & labels,
-                    I_Iter                & begin,
-                    I_Iter                & end,
-                    Array           const & region_response)
+//    void operator()(DataSourceF_t   const & column,
+//                    DataSource_t    const & labels,
+//                    I_Iter                & begin,
+//                    I_Iter                & end,
+//                    Array           const & region_response)
 
     {
-// hide for now
-//        std::sort(begin, end,
-//                  SortSamplesByDimensions<DataSourceF_t>(comp_features, feat_index));
         std::sort(begin, end,
-                  SortSamplesByDimensions<DataSourceF_t>(column, 0));
+                  SortSamplesByDimensions<DataSourceF_t>(comp_features, feat_index));
+//        std::sort(begin, end,
+//                  SortSamplesByDimensions<DataSourceF_t>(column, 0));
         typedef typename
             LossTraits<LineSearchLossTag, DataSource_t>::type LineSearchLoss;
         LineSearchLoss left(labels, ext_param_); //initialize left and right region
@@ -920,9 +917,8 @@ public:
         min_gini_ = right.init(begin, end, region_response);  
         min_threshold_ = *begin;
         min_index_     = 0;  //the starting point where to split 
-// hide for now
-//        DimensionNotEqual<DataSourceF_t> comp(comp_features, feat_index);
-        DimensionNotEqual<DataSourceF_t> comp(column, 0);
+        DimensionNotEqual<DataSourceF_t> comp(comp_features, feat_index);
+//        DimensionNotEqual<DataSourceF_t> comp(column, 0);
 
         I_Iter iter = begin;
         I_Iter next = std::adjacent_find(iter, end, comp);
@@ -947,9 +943,8 @@ public:
                 min_gini_       = loss; 
 #endif
                 min_index_      = next - begin +1 ;
-                // hide for now
-//                min_threshold_  = (double(comp_features(*next,feat_index)) + double(comp_features(*(next +1), feat_index)))/2.0;
-                min_threshold_  = (double(column(*next,0)) + double(column(*(next +1), 0)))/2.0;
+                min_threshold_  = (double(comp_features(*next,feat_index)) + double(comp_features(*(next +1), feat_index)))/2.0;
+//                min_threshold_  = (double(column(*next,0)) + double(column(*(next +1), 0)))/2.0;
             }
             iter = next +1 ;
             next = std::adjacent_find(iter, end, comp);
@@ -1084,62 +1079,56 @@ class ThresholdSplit: public SplitBase<Tag>
                       splitColumns[ii+ randint(features.shape(1) - ii)]);
 
 
-// hide for now
 //        // select which type of features to calculate: NormalFeatures, OffsetFeatures, DiffFeatures
 
 //        // HARD-CODE A FEW THINGS FOR NOW.  LATER, ADD MAX_OFFSET AS AN OPTION INTO THE RANDOM FOREST OPTIONS OBJECT.  NOT SURE WHERE TO ADD IM_SHAPE_
-//        int feature_type = randint(3);  // uniform probability between the three options
-//        int max_offset_x = 300;
-//        int max_offset_y = 300;
-//        Shape2 im_shape(1024, 1024);
+        int feature_type = randint(3);  // uniform probability between the three options
+        int max_offset_x = 50;
+        int max_offset_y = 50;
+        Shape2 im_shape(99, 556);
 
-//        // TEST!!
-//        feature_type = 0;
+        // TEST!!
+        feature_type = 0;
 
-//        // randomly select xy-offset into image
-//        int offset_x = randint(2*max_offset_x + 1) - max_offset_x;
-//        int offset_y = randint(2*max_offset_y + 1) - max_offset_y;
+        // randomly select xy-offset into image
+        int offset_x = randint(2*max_offset_x + 1) - max_offset_x;
+        int offset_y = randint(2*max_offset_y + 1) - max_offset_y;
 
-//        FeatureBase<T,C> * comp_features = nullptr;
+        FeatureBase<T,C> * comp_features = nullptr;
 
-//        switch(feature_type)
-//        {
-//        case 0:
-//        {
-//            comp_features = new NormalFeatures<T,C>(features, im_shape);
-//        }   break;
-//        case 1:
-//        {
-//            comp_features = new OffsetFeatures<T,C>(features, im_shape, offset_x, offset_y);
-//        }   break;
-//        case 2:
-//        {
-//            comp_features = new DiffFeatures<T,C>(features, im_shape, offset_x, offset_y);
-//        }   break;
-//        }
+        switch(feature_type)
+        {
+        case 0:
+        {
+            comp_features = new NormalFeatures<T,C>(features, im_shape);
+        }   break;
+        case 1:
+        {
+            comp_features = new OffsetFeatures<T,C>(features, im_shape, offset_x, offset_y);
+        }   break;
+        case 2:
+        {
+            comp_features = new DiffFeatures<T,C>(features, im_shape, offset_x, offset_y);
+        }   break;
+        }
 
         // find the best gini index
         bestSplitIndex              = 0;
         double  current_min_gini    = region_gini_;
-        // hide for now
-//        int     num2try             = (*comp_features).shape(1);
-        int     num2try             = features.shape(1);
+        int     num2try             = (*comp_features).shape(1);
+//        int     num2try             = features.shape(1);
         for(int k=0; k<num2try; ++k)
         {
             //this functor does all the work
-            // hide for now
-            /*
             bgfunc(*comp_features,
                    splitColumns[k],
                    labels,
                    region.begin(), region.end(),
                    region.classCounts());
-*/
-            bgfunc(columnVector(features, splitColumns[k]),
-                   labels,
-                   region.begin(), region.end(),
-                   region.classCounts());
-
+//            bgfunc(columnVector(features, splitColumns[k]),
+//                   labels,
+//                   region.begin(), region.end(),
+//                   region.classCounts());
 
             min_gini_[k]            = bgfunc.min_gini_;
             min_indices_[k]         = bgfunc.min_index_;
@@ -1180,11 +1169,10 @@ class ThresholdSplit: public SplitBase<Tag>
 //        }
 
         // partition the range according to the best dimension
-        // hide for now
-//        SortSamplesByDimensions<FeatureBase<T, C> >
-//            sorter(*comp_features, node.column(), node.threshold());
-        SortSamplesByDimensions<MultiArrayView<2, T, C> >
-            sorter(features, node.column(), node.threshold());
+        SortSamplesByDimensions<FeatureBase<T, C> >
+            sorter(*comp_features, node.column(), node.threshold());
+//        SortSamplesByDimensions<MultiArrayView<2, T, C> >
+//            sorter(features, node.column(), node.threshold());
 
         IndexIterator bestSplit =
             std::partition(region.begin(), region.end(), sorter);
@@ -1197,8 +1185,7 @@ class ThresholdSplit: public SplitBase<Tag>
         childRegions[1].rule.push_back(std::make_pair(1, 1.0));
 
         // clear dynamically allocated memory
-        // hide for now
-//        delete comp_features;
+        delete comp_features;
 
         return i_ThresholdNode;
     }
