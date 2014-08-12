@@ -168,6 +168,8 @@ class DecisionTree
                       int                     const & row,
                       Visitor_t                     & visitor) const
     {
+        std::cout << "called getToLeaf" << std::endl;
+
         TreeInt index = 2;
         while(!isLeafNode(topology_[index]))
         {
@@ -182,8 +184,8 @@ class DecisionTree
                     // now i'm at a specific node, can create the corresponding features, using feature_type
                     // AGAIN, HARD-CODE A FEW THINGS FOR NOW
                     Shape2 im_shape(288,556);
-                    int feature_type = 0;
-//                    int feature_type = node.feature_type();
+                    int feature_type = node.feature_type();
+//                    std::cout << feature_type << std::endl;
 
                     FeatureBase<U,C> * comp_features = nullptr;
                     switch(feature_type)

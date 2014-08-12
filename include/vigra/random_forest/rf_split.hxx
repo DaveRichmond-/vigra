@@ -167,10 +167,10 @@ class SplitBase
         the class histogram
     **/
     template<class T, class C, class T2,class C2, class Region, class Random>
-    int makeTerminalNode(MultiArrayView<2, T, C>   features,
-                         MultiArrayView<2, T2, C2> labels,
+    int makeTerminalNode(MultiArrayView<2, T, C>    /* features */,
+                         MultiArrayView<2, T2, C2>  /* labels */,
                          Region &                  region,
-                         Random                    randint)
+                         Random                     /* randint */)
     {
         Node<e_ConstProbNode> ret(t_data, p_data);
         node_ = ret;
@@ -1087,6 +1087,7 @@ class ThresholdSplit: public SplitBase<Tag>
 
         // TEST!!
         feature_type = 0;
+//        std::cout << feature_type << std::endl;
 
         // randomly select xy-offset into image
         int offset_x = randint(2*max_offset_x + 1) - max_offset_x;
