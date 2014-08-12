@@ -181,7 +181,7 @@ class DecisionTree
 
                     // now i'm at a specific node, can create the corresponding features, using feature_type
                     // AGAIN, HARD-CODE A FEW THINGS FOR NOW
-                    Shape2 im_shape(576,556);
+                    Shape2 im_shape(288,556);
                     int feature_type = 0;
 //                    int feature_type = node.feature_type();
 
@@ -209,6 +209,7 @@ class DecisionTree
                     break;
                 }
                 // kill HyperplaneNode and HypersphereNode for now, because I don't use them, and don't want to update for new feature types
+                /*
                 case i_HyperplaneNode:
                 {
                     Node<i_HyperplaneNode> 
@@ -223,6 +224,7 @@ class DecisionTree
                     index = node.next(features);
                     break;
                 }
+                */
 #if 0 
                 // for quick prototyping! has to be implemented.
                 case i_VirtualNode:

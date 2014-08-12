@@ -891,7 +891,7 @@ public:
                 class I_Iter, 
                 class Array>
     void operator()(DataSourceF_t   const & comp_features,
-                    Int32                   feat_index,
+                    Int32           const   feat_index,
                     DataSource_t    const & labels,
                     I_Iter                & begin, 
                     I_Iter                & end,
@@ -911,8 +911,6 @@ public:
             LossTraits<LineSearchLossTag, DataSource_t>::type LineSearchLoss;
         LineSearchLoss left(labels, ext_param_); //initialize left and right region
         LineSearchLoss right(labels, ext_param_);
-
-        
 
         min_gini_ = right.init(begin, end, region_response);  
         min_threshold_ = *begin;
@@ -946,7 +944,7 @@ public:
                 min_threshold_  = (double(comp_features(*next,feat_index)) + double(comp_features(*(next +1), feat_index)))/2.0;
 //                min_threshold_  = (double(column(*next,0)) + double(column(*(next +1), 0)))/2.0;
             }
-            iter = next +1 ;
+            iter = next + 1 ;
             next = std::adjacent_find(iter, end, comp);
         }
         //std::cerr << std::endl << " 000 " << std::endl;
@@ -1081,11 +1079,11 @@ class ThresholdSplit: public SplitBase<Tag>
 
 //        // select which type of features to calculate: NormalFeatures, OffsetFeatures, DiffFeatures
 
-//        // HARD-CODE A FEW THINGS FOR NOW.  LATER, ADD MAX_OFFSET AS AN OPTION INTO THE RANDOM FOREST OPTIONS OBJECT.  NOT SURE WHERE TO ADD IM_SHAPE_
+        // HARD-CODE A FEW THINGS FOR NOW.  LATER, ADD MAX_OFFSET AS AN OPTION INTO THE RANDOM FOREST OPTIONS OBJECT.  NOT SURE WHERE TO ADD IM_SHAPE_
         int feature_type = randint(3);  // uniform probability between the three options
         int max_offset_x = 50;
         int max_offset_y = 50;
-        Shape2 im_shape(99, 556);
+        Shape2 im_shape(288, 556);
 
         // TEST!!
         feature_type = 0;
@@ -1160,13 +1158,13 @@ class ThresholdSplit: public SplitBase<Tag>
         SB::node_ = node;
         node.threshold()    = min_thresholds_[bestSplitIndex];
         node.column()       = splitColumns[bestSplitIndex];
-        // also store the feature type, for look-up in the prediction phase
-//        node.feature_type() = feature_type;
-//        // store offsets in node
-//        if (feature_type != 0){
-//            node.offset_x() = offset_x;
-//            node.offset_y() = offset_y;
-//        }
+
+        // also store the feature type and offsets, for look-up in the prediction phase
+        node.feature_type() = feature_type;
+        if (feature_type != 0) {
+            node.offset_x() = offset_x;
+            node.offset_y() = offset_y;
+        }
 
         // partition the range according to the best dimension
         SortSamplesByDimensions<FeatureBase<T, C> >
