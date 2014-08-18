@@ -33,3 +33,5 @@ Makefile
 *.l[doa]
 *.loT
 *.orig
+/CMakeLists.txt.user
+*.DS_Store
