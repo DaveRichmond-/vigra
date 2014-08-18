@@ -653,6 +653,7 @@ class RandomForest
     {
         vigra_precondition(features.shape(0) == labels.shape(0),
             "RandomForest::predictLabels(): Label array has wrong size.");
+
         for(int k=0; k<features.shape(0); ++k)
         {
             vigra_precondition(!detail::contains_nan(rowVector(features, k)),
