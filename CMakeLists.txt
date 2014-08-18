@@ -6,9 +6,7 @@ cmake_minimum_required(VERSION 2.6)
 #
 ##################################################
 
-PROJECT(my_vigra)
-
-message("Vigra source directory:" ${vigra_SOURCE_DIR})
+PROJECT(vigra)
 
 # read the current version from config_version.hxx
 file(READ ${vigra_SOURCE_DIR}/include/vigra/config_version.hxx VIGRA_VERSION_FILE)
