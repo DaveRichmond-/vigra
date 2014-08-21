@@ -98,9 +98,6 @@ void dt_import_HDF5(HDF5File & h5context, detail::DecisionTree & tree,
     h5context.readAndResize(rf_hdf5_topology, tree.topology_);
     // read parameters
     h5context.readAndResize(rf_hdf5_parameters, tree.parameters_);
-    // read feature_type.  DLR.
-    h5context.readAndResize(rf_hdf5_feature_type, tree.feature_type_);
-    //
     h5context.cd_up();
 }
 
@@ -114,9 +111,6 @@ void dt_export_HDF5(HDF5File & h5context,
     h5context.write(rf_hdf5_topology, tree.topology_);
     // write down parameters
     h5context.write(rf_hdf5_parameters, tree.parameters_);
-    // write down feature type (Normal, Offset, Diff).  DLR.
-    h5context.write(rf_hdf5_feature_type, tree.feature_type_);
-    //
     h5context.cd_up();
 }
 

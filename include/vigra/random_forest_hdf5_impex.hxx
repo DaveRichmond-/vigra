@@ -49,7 +49,6 @@ static const char *const rf_hdf5_ext_param     = "_ext_param";
 static const char *const rf_hdf5_labels        = "labels";
 static const char *const rf_hdf5_topology      = "topology";
 static const char *const rf_hdf5_parameters    = "parameters";
-static const char *const rf_hdf5_feature_type  = "feature_type";    // DLR
 static const char *const rf_hdf5_tree          = "Tree_";
 static const char *const rf_hdf5_version_group = ".";
 static const char *const rf_hdf5_version_tag   = "vigra_random_forest_version";
