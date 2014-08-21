@@ -91,9 +91,10 @@ class NodeBase
     typedef Int32                               INT;
     typedef ArrayVector<INT>                    T_Container_type;
     typedef ArrayVector<double>                 P_Container_type;
+    typedef ArrayVector<int>                    FT_Container_type;
     typedef T_Container_type::iterator          Topology_type;
     typedef P_Container_type::iterator          Parameter_type;
-
+    typedef FT_Container_type::iterator         FeatureType_type;
 
     mutable Topology_type                       topology_;
     int                                         topology_size_;
@@ -101,15 +102,16 @@ class NodeBase
     mutable Parameter_type                      parameters_;
     int                                         parameter_size_ ;
 
+    mutable FeatureType_type                    feature_type_;
+    int                                         offset_x_;
+    int                                         offset_y_;
+
         // Tree Parameters
     int                                         featureCount_;
     int                                         classCount_;
 
         // Node Parameters
     bool                                        hasData_;
-    int                                         feature_type_;
-    int                                         offset_x_;
-    int                                         offset_y_;
 
 
     /** get Node Weight
@@ -220,6 +222,11 @@ class NodeBase
         return parameter_size_;
     }
 
+    /** Feature Type Range **/
+    FeatureType_type  feature_type_begin() const
+    {
+        return feature_type_;
+    }
 
     /** where are the child nodes?
      */
@@ -268,18 +275,17 @@ class NodeBase
         /*while((int)xrange.size() <  featureCount_)
             xrange.push_back(xrange.size());*/
     }
-
     /** create ReadOnly node with known length (the parameter range is valid)
      */
     NodeBase(   int                      tLen,
                 int                      pLen,
                 T_Container_type const & topology,
                 P_Container_type const & parameter,
-                INT                         n)
+                INT                      n)
     :
-                    topology_   (const_cast<Topology_type>(topology.begin()+ n)),
+                    topology_(const_cast<Topology_type>(topology.begin() + n)),
                     topology_size_(tLen),
-                    parameters_  (const_cast<Parameter_type>(parameter.begin() + parameter_addr())),
+                    parameters_(const_cast<Parameter_type>(parameter.begin() + parameter_addr())),
                     parameter_size_(pLen),
                     featureCount_(topology[0]),
                     classCount_(topology[1]),
@@ -288,7 +294,28 @@ class NodeBase
         /*while((int)xrange.size() <  featureCount_)
             xrange.push_back(xrange.size());*/
     }
-    /** create ReadOnly node with known length 
+    /** create ReadOnly node with known length (the parameter range is valid)
+     */
+    NodeBase(   int                      tLen,
+                int                      pLen,
+                T_Container_type const & topology,
+                P_Container_type const & parameter,
+                ArrayVector<int> const & feature_type,
+                INT                      n)
+    :
+                    topology_(const_cast<Topology_type>(topology.begin() + n)),
+                    topology_size_(tLen),
+                    parameters_(const_cast<Parameter_type>(parameter.begin() + parameter_addr())),
+                    feature_type_(const_cast<FeatureType_type>(feature_type.begin() + (parameter_addr()/2))),    // hack sol'n: feature_type_ vector grows half as fast as parameter_type_ vector
+                    parameter_size_(pLen),
+                    featureCount_(topology[0]),
+                    classCount_(topology[1]),
+                    hasData_(true)
+    {
+        /*while((int)xrange.size() <  featureCount_)
+            xrange.push_back(xrange.size());*/
+    }
+    /** create ReadOnly node with known length
      * from existing Node
      */
     NodeBase(   int                      tLen,
@@ -307,6 +334,44 @@ class NodeBase
             xrange.push_back(xrange.size());*/
     }
 
+    /** create new Node at end of vector
+     * \param tLen number of integers needed in the topolog vector
+     * \param pLen number of parameters needed (this includes the node
+     *           weight)
+     * \param topology reference to Topology array of decision tree.
+     * \param parameter reference to Parameter array of decision tree.
+     **/
+     NodeBase(   int                      tLen,
+                 int                      pLen,
+                 T_Container_type   &     topology,
+                 P_Container_type   &     parameter)
+     :
+                     topology_size_(tLen),
+                     parameter_size_(pLen),
+                     featureCount_(topology[0]),
+                     classCount_(topology[1]),
+                     hasData_(true)
+     {
+         /*while((int)xrange.size() <  featureCount_)
+             xrange.push_back(xrange.size());*/
+
+         size_t n = topology.size();
+         for(int ii = 0; ii < tLen; ++ii)
+             topology.push_back(0);
+         //topology.resize (n  + tLen);
+
+         topology_           =   topology.begin()+ n;
+         typeID()            =   UnFilledNode;
+
+         parameter_addr()    =   static_cast<int>(parameter.size());
+
+         //parameter.resize(parameter.size() + pLen);
+         for(int ii = 0; ii < pLen; ++ii)
+             parameter.push_back(0);
+
+         parameters_          =   parameter.begin()+ parameter_addr();
+         weights() = 1;
+     }
 
    /** create new Node at end of vector
     * \param tLen number of integers needed in the topolog vector
@@ -317,8 +382,9 @@ class NodeBase
     **/
     NodeBase(   int                      tLen,
                 int                      pLen,
-                T_Container_type   &        topology,
-                P_Container_type   &        parameter)
+                T_Container_type   &     topology,
+                P_Container_type   &     parameter,
+                FT_Container_type  &     feature_type)
     :
                     topology_size_(tLen),
                     parameter_size_(pLen),
@@ -343,10 +409,44 @@ class NodeBase
         for(int ii = 0; ii < pLen; ++ii)
             parameter.push_back(0);
 
-        parameters_          =   parameter.begin()+ parameter_addr();
+        parameters_         =   parameter.begin()+ parameter_addr();
         weights() = 1;
+
+        feature_type.push_back(0);
+        feature_type_       = feature_type.begin();
     }
 
+    /** PseudoCopy Constructor  -
+     *
+     * Copy Node to the end of a container.
+     * Since each Node views on different data there can't be a real
+     * copy constructor (unless both objects should point to the
+     * same underlying data.
+     */
+      NodeBase(   NodeBase      const  &    toCopy,
+                  T_Container_type     &    topology,
+                  P_Container_type     &    parameter)
+      :
+                      topology_size_(toCopy.topology_size()),
+                      parameter_size_(toCopy.parameters_size()),
+                      featureCount_(topology[0]),
+                      classCount_(topology[1]),
+                      hasData_(true)
+      {
+          /*while((int)xrange.size() <  featureCount_)
+              xrange.push_back(xrange.size());*/
+
+          size_t n            = topology.size();
+          for(int ii = 0; ii < toCopy.topology_size(); ++ii)
+              topology.push_back(toCopy.topology_begin()[ii]);
+  //        topology.insert(topology.end(), toCopy.topology_begin(), toCopy.topology_end());
+          topology_           =   topology.begin()+ n;
+          parameter_addr()    =   static_cast<int>(parameter.size());
+          for(int ii = 0; ii < toCopy.parameters_size(); ++ii)
+              parameter.push_back(toCopy.parameters_begin()[ii]);
+  //        parameter.insert(parameter.end(), toCopy.parameters_begin(), toCopy.parameters_end());
+          parameters_         =   parameter.begin()+ parameter_addr();
+      }
 
   /** PseudoCopy Constructor  - 
    *
@@ -356,8 +456,9 @@ class NodeBase
    * same underlying data.                                  
    */
     NodeBase(   NodeBase      const  &    toCopy,
-                T_Container_type      &    topology,
-                P_Container_type     &    parameter)
+                T_Container_type     &    topology,
+                P_Container_type     &    parameter,
+                ArrayVector<int>     &    feature_type)
     :
                     topology_size_(toCopy.topology_size()),
                     parameter_size_(toCopy.parameters_size()),
@@ -372,12 +473,18 @@ class NodeBase
         for(int ii = 0; ii < toCopy.topology_size(); ++ii)
             topology.push_back(toCopy.topology_begin()[ii]);
 //        topology.insert(topology.end(), toCopy.topology_begin(), toCopy.topology_end());
+        // toCopy.topology[1]
         topology_           =   topology.begin()+ n;
-        parameter_addr()    =   static_cast<int>(parameter.size());
+        parameter_addr()    =   static_cast<int>(parameter.size());             // THIS SETS THE TOPOLOGY[3 + N*5] TO THE (2*N)^th POSITION IN THE PARAMETER ARRAY
         for(int ii = 0; ii < toCopy.parameters_size(); ++ii)
             parameter.push_back(toCopy.parameters_begin()[ii]);
 //        parameter.insert(parameter.end(), toCopy.parameters_begin(), toCopy.parameters_end());
-        parameters_          =   parameter.begin()+ parameter_addr();
+        parameters_         =   parameter.begin()+ parameter_addr();
+
+        // add offsets and feature_type here!
+//        feature_type_addr() = static_cast<int>(feature_type.size());
+        feature_type.push_back(toCopy.feature_type_begin()[0]);
+//        feature_type_       =   feature_type.begin()+ feature_type_addr();
     }
 };
 
@@ -398,25 +505,40 @@ class Node<i_ThresholdNode>
 
     Node(   BT::T_Container_type &   topology,
             BT::P_Container_type &   param)
-                :   BT(5,2,topology, param)
+                :   BT(8,2,topology, param)
+    {
+        BT::typeID() = i_ThresholdNode;
+    }
+
+    Node(   BT::T_Container_type &   topology,
+            BT::P_Container_type &   param,
+            BT::FT_Container_type &  feature_type)
+                :   BT(8,2,topology, param, feature_type)
     {
         BT::typeID() = i_ThresholdNode;
     }
 
     Node(   BT::T_Container_type const     &   topology,
             BT::P_Container_type const     &   param,
-                    INT                   n             )
-                :   BT(5,2,topology, param, n)
+            INT                                n)
+                :   BT(8,2,topology, param, n)
+    {}
+
+    Node(   BT::T_Container_type const     &   topology,
+            BT::P_Container_type const     &   param,
+            ArrayVector<int>     const     &   feature_type,
+            INT                                n)
+                :   BT(8,2,topology, param, feature_type, n)
     {}
 
     Node( BT & node_)
-        :   BT(5, 2, node_) 
+        :   BT(8, 2, node_)
     {}
 
     // get the feature type, and offsets
-    int & feature_type()
+    int & feature_type() const
     {
-        return BT::feature_type_;
+        return BT::feature_type_begin()[0];
     }
     int & offset_x()
     {
@@ -427,7 +549,7 @@ class Node<i_ThresholdNode>
         return BT::offset_y_;
     }
 
-    double& threshold()
+    double & threshold()
     {
         return BT::parameters_begin()[1];
     }
@@ -453,10 +575,42 @@ class Node<i_ThresholdNode>
 //    }
 
     template<class U, class C>
-    BT::INT  next(FeatureBase<U,C> const & comp_features, int const & row) const
+    BT::INT  next(MultiArrayView<2,U,C> const & features, int const & row) const
     {
-        return (comp_features(row, column()) < threshold())? child(0):child(1);
+
+        // now i'm at a specific node, can create the corresponding features, using feature_type
+        // AGAIN, HARD-CODE A FEW THINGS FOR NOW
+        Shape2 im_shape(288,556);
+
+        FeatureBase<U,C> * comp_features = nullptr;
+//        switch(feature_type())
+        switch(0)
+        {
+        case 0:
+        {
+            comp_features = new NormalFeatures<U,C>(features, im_shape);
+        }   break;
+        case 1:
+        {
+            comp_features = new OffsetFeatures<U,C>(features, im_shape, offset_x_, offset_y_);  // CHANGE TO FNCT CALLS
+        }   break;
+        case 2:
+        {
+            comp_features = new DiffFeatures<U,C>(features, im_shape, offset_x_, offset_y_);
+        }   break;
+        }
+
+        return ((*comp_features)(row, column()) < threshold())? child(0):child(1);
+
+        delete comp_features;
+
     }
+
+//    template<class U, class C>
+//    BT::INT  next(FeatureBase<U,C> const & comp_features, int const & row) const
+//    {
+//        return (comp_features(row, column()) < threshold())? child(0):child(1);
+//    }
 
 };
 
@@ -482,7 +636,7 @@ class Node<i_HyperplaneNode>
     Node(           BT::T_Container_type  const  &   topology,
                     BT::P_Container_type  const  &   split_param,
                     int                  n             )
-                :   NodeBase(5 , 2,topology, split_param, n)
+                :   NodeBase(5 , 2, topology, split_param, n)
     {
         //TODO : is there a more elegant way to do this?
         BT::topology_size_ += BT::column_data()[0]== AllColumns ?

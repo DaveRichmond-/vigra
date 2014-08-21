@@ -103,6 +103,7 @@ class SplitBase
 
     NodeBase::T_Container_type          t_data;
     NodeBase::P_Container_type          p_data;
+    NodeBase::FT_Container_type         ft_data;
 
     NodeBase                            node_;
 
@@ -140,6 +141,7 @@ class SplitBase
     {
         t_data.resize(2);
         p_data.resize(0);
+        ft_data.resize(0);
     }
 
 
@@ -1085,17 +1087,14 @@ class ThresholdSplit: public SplitBase<Tag>
         int max_offset_y = 50;
         Shape2 im_shape(288, 556);
 
-        // TEST!!
-        feature_type = 0;
-//        std::cout << feature_type << std::endl;
-
         // randomly select xy-offset into image
         int offset_x = randint(2*max_offset_x + 1) - max_offset_x;
         int offset_y = randint(2*max_offset_y + 1) - max_offset_y;
 
         FeatureBase<T,C> * comp_features = nullptr;
 
-        switch(feature_type)
+        switch(0)   // HARD-CODE
+//        switch(feature_type)
         {
         case 0:
         {
@@ -1155,17 +1154,15 @@ class ThresholdSplit: public SplitBase<Tag>
             return  this->makeTerminalNode(features, labels, region, randint);      // doesn't actually use features, so i left this alone
         
         //create a Node for output
-        Node<i_ThresholdNode>   node(SB::t_data, SB::p_data);
+        Node<i_ThresholdNode>   node(SB::t_data, SB::p_data, SB::ft_data);
         SB::node_ = node;
         node.threshold()    = min_thresholds_[bestSplitIndex];
         node.column()       = splitColumns[bestSplitIndex];
 
         // also store the feature type and offsets, for look-up in the prediction phase
         node.feature_type() = feature_type;
-        if (feature_type != 0) {
-            node.offset_x() = offset_x;
-            node.offset_y() = offset_y;
-        }
+//        node.offset_x()     = offset_x;
+//        node.offset_y()     = offset_y;
 
         // partition the range according to the best dimension
         SortSamplesByDimensions<FeatureBase<T, C> >

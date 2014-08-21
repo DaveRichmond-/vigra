@@ -453,7 +453,7 @@ class RandomForest
              class Stop_t,
              class Visitor_t,
              class Random_t>
-    void learn( MultiArrayView<2, U, C1>       const  &   features,
+    void learn( MultiArrayView<2, U, C1> const  &   features,
                 MultiArrayView<2, U2,C2> const  &   response,
                 Visitor_t                           visitor,
                 Split_t                             split,
@@ -465,7 +465,7 @@ class RandomForest
              class Split_t,
              class Stop_t,
              class Visitor_t>
-    void learn( MultiArrayView<2, U, C1>       const  &   features,
+    void learn( MultiArrayView<2, U, C1> const  &   features,
                 MultiArrayView<2, U2,C2> const  &   response,
                 Visitor_t                           visitor,
                 Split_t                             split,
@@ -620,12 +620,15 @@ class RandomForest
      *         to get back the same type used during learning. 
      */
     template <class U, class C, class Stop>
-    LabelType predictLabel(MultiArrayView<2, U, C>const & features, Stop & stop) const;
+    LabelType predictLabel(MultiArrayView<2, U, C>const & features,
+                           int                    const & row,
+                           Stop                         & stop) const;
 
     template <class U, class C>
-    LabelType predictLabel(MultiArrayView<2, U, C>const & features)
+    LabelType predictLabel(MultiArrayView<2, U, C>const & features,
+                           int                    const & row)
     {
-        return predictLabel(features, rf_default()); 
+        return predictLabel(features, row, rf_default());
     } 
     /** \brief predict a label with features and class priors
      *
@@ -635,7 +638,8 @@ class RandomForest
      */
     template <class U, class C>
     LabelType predictLabel(MultiArrayView<2, U, C> const & features,
-                                ArrayVectorView<double> prior) const;
+                           int                     const & row,
+                           ArrayVectorView<double>         prior) const;
 
     /** \brief predict multiple labels with given features
      *
@@ -648,8 +652,8 @@ class RandomForest
      * If the input contains an NaN value, an precondition exception is thrown.
      */
     template <class U, class C1, class T, class C2>
-    void predictLabels(MultiArrayView<2, U, C1>const & features,
-                       MultiArrayView<2, T, C2> & labels) const
+    void predictLabels(MultiArrayView<2, U, C1> const & features,
+                       MultiArrayView<2, T, C2>       & labels) const
     {
         vigra_precondition(features.shape(0) == labels.shape(0),
             "RandomForest::predictLabels(): Label array has wrong size.");
@@ -658,7 +662,7 @@ class RandomForest
         {
             vigra_precondition(!detail::contains_nan(rowVector(features, k)),
                 "RandomForest::predictLabels(): NaN in feature matrix.");
-            labels(k,0) = detail::RequiresExplicitCast<T>::cast(predictLabel(rowVector(features, k), rf_default()));
+            labels(k,0) = detail::RequiresExplicitCast<T>::cast(predictLabel(features, k, rf_default()));
         }
     }
 
@@ -673,9 +677,9 @@ class RandomForest
      *        contain an NaN value.
      */
     template <class U, class C1, class T, class C2>
-    void predictLabels(MultiArrayView<2, U, C1>const & features,
-                       MultiArrayView<2, T, C2> & labels,
-                       LabelType nanLabel) const
+    void predictLabels(MultiArrayView<2, U, C1> const & features,
+                       MultiArrayView<2, T, C2>       & labels,
+                       LabelType                        nanLabel) const
     {
         vigra_precondition(features.shape(0) == labels.shape(0),
             "RandomForest::predictLabels(): Label array has wrong size.");
@@ -684,7 +688,7 @@ class RandomForest
             if(detail::contains_nan(rowVector(features, k)))
                 labels(k,0) = nanLabel;
             else
-                labels(k,0) = detail::RequiresExplicitCast<T>::cast(predictLabel(rowVector(features, k), rf_default()));
+                labels(k,0) = detail::RequiresExplicitCast<T>::cast(predictLabel(features, k, rf_default()));
         }
     }
 
@@ -698,15 +702,16 @@ class RandomForest
      * \param stop: an early stopping criterion.
      */
     template <class U, class C1, class T, class C2, class Stop>
-    void predictLabels(MultiArrayView<2, U, C1>const & features,
-                       MultiArrayView<2, T, C2> & labels,
-                       Stop                     & stop) const
+    void predictLabels(MultiArrayView<2, U, C1> const & features,
+                       MultiArrayView<2, T, C2>       & labels,
+                       Stop                           & stop) const
     {
         vigra_precondition(features.shape(0) == labels.shape(0),
             "RandomForest::predictLabels(): Label array has wrong size.");
         for(int k=0; k<features.shape(0); ++k)
-            labels(k,0) = detail::RequiresExplicitCast<T>::cast(predictLabel(rowVector(features, k), stop));
+            labels(k,0) = detail::RequiresExplicitCast<T>::cast(predictLabel(features, k, stop));
     }
+
     /** \brief predict the class probabilities for multiple labels
      *
      *  \param features same as above
@@ -719,10 +724,14 @@ class RandomForest
         cannot belong to any of the classes. The corresponding row in the probability 
         array will therefore contain all zeros.
      */
+
+
     template <class U, class C1, class T, class C2, class Stop>
-    void predictProbabilities(MultiArrayView<2, U, C1>const &   features,
-                              MultiArrayView<2, T, C2> &        prob,
-                              Stop                     &        stop) const;
+    void predictProbabilities(MultiArrayView<2, U, C1> const & features,
+                              int                      const & row,
+                              MultiArrayView<2, T, C2>       & prob,
+                              Stop                           & stop) const;
+
     template <class T1,class T2, class C>
     void predictProbabilities(OnlinePredictionSet<T1> &  predictionSet,
                                MultiArrayView<2, T2, C> &       prob);
@@ -734,10 +743,11 @@ class RandomForest
      *  save class probabilities
      */
     template <class U, class C1, class T, class C2>
-    void predictProbabilities(MultiArrayView<2, U, C1>const &   features,
-                              MultiArrayView<2, T, C2> &        prob)  const
+    void predictProbabilities(MultiArrayView<2, U, C1>  const & features,
+                              int                       const & row,
+                              MultiArrayView<2, T, C2>        & prob)  const
     {
-        predictProbabilities(features, prob, rf_default()); 
+        predictProbabilities(features, row, prob, rf_default());
     }   
 
     template <class U, class C1, class T, class C2>
@@ -1227,17 +1237,24 @@ void RandomForest<LabelType, PreprocessorTag>::
 template <class LabelType, class Tag>
 template <class U, class C, class Stop>
 LabelType RandomForest<LabelType, Tag>
-    ::predictLabel(MultiArrayView<2, U, C> const & features, Stop & stop) const
+    ::predictLabel(MultiArrayView<2, U, C> const & features,
+                   int                     const & row,
+                   Stop                          & stop) const
 {
     vigra_precondition(columnCount(features) >= ext_param_.column_count_,
         "RandomForestn::predictLabel():"
             " Too few columns in feature matrix.");
+
+    // REMOVE PRECONDITION THAT FEATURE MATRIX MUST HAVE A SINGLE ROW.  ISN'T COMPATIBLE WITH NON-LOCAL FEATURES.  DLR
+    /*
     vigra_precondition(rowCount(features) == 1,
         "RandomForestn::predictLabel():"
             " Feature matrix must have a singlerow.");
+    */
+
     MultiArray<2, double> probabilities(Shape2(1, ext_param_.class_count_), 0.0);
-    LabelType          d;
-    predictProbabilities(features, probabilities, stop);
+    LabelType             d;
+    predictProbabilities(features, row, probabilities, stop);
     ext_param_.to_classlabel(argMax(probabilities), d);
     return d;
 }
@@ -1248,7 +1265,8 @@ template <class LabelType, class PreprocessorTag>
 template <class U, class C>
 LabelType RandomForest<LabelType, PreprocessorTag>
     ::predictLabel( MultiArrayView<2, U, C> const & features,
-                    ArrayVectorView<double> priors) const
+                    int                     const & row,
+                    ArrayVectorView<double>         priors) const
 {
     using namespace functor;
     vigra_precondition(columnCount(features) >= ext_param_.column_count_,
@@ -1396,7 +1414,7 @@ void RandomForest<LabelType,PreprocessorTag>
     for(unsigned int i=0;i<totalWeights.size();++i)
     {
         double test=0.0;
-        //Normalise votes in each row by total VoteCount (totalWeight
+        //Normalise votes in each row by total VoteCount (totalWeight)
         for(int l=0; l<ext_param_.class_count_; ++l)
         {
             test+=prob(i,l);
@@ -1410,24 +1428,27 @@ void RandomForest<LabelType,PreprocessorTag>
 template <class LabelType, class PreprocessorTag>
 template <class U, class C1, class T, class C2, class Stop_t>
 void RandomForest<LabelType, PreprocessorTag>
-    ::predictProbabilities(MultiArrayView<2, U, C1>const &  features,
-                           MultiArrayView<2, T, C2> &       prob,
-                           Stop_t                   &       stop_) const
+    ::predictProbabilities(MultiArrayView<2, U, C1> const & features,
+                           int                      const & row,
+                           MultiArrayView<2, T, C2>       & prob,
+                           Stop_t                         & stop_) const
 {
-    //Features are n xp
+    //Features are n x p
     //prob is n x NumOfLabel probability for each feature in each class
 
+    // REMOVE PRECONDITION THAT FEATURES AND PROB HAVE THE SAME ROW COUNT.  CLASSIFYING ONE ROW, BUT USES THE WHOLE FEATURE ARRAY.  DLR
+    /*
     vigra_precondition(rowCount(features) == rowCount(prob),
       "RandomForestn::predictProbabilities():"
         " Feature matrix and probability matrix size mismatch.");
+    */
 
     // num of features must be bigger than num of features in Random forest training
     // but why bigger?
     vigra_precondition( columnCount(features) >= ext_param_.column_count_,
       "RandomForestn::predictProbabilities():"
         " Too few columns in feature matrix.");
-    vigra_precondition( columnCount(prob)
-                        == (MultiArrayIndex)ext_param_.class_count_,
+    vigra_precondition( columnCount(prob) == (MultiArrayIndex)ext_param_.class_count_,
       "RandomForestn::predictProbabilities():"
       " Probability matrix must have as many columns as there are classes.");
 
@@ -1446,12 +1467,14 @@ void RandomForest<LabelType, PreprocessorTag>
                            tree_indices_.end()); 
     }
     */
-    //Classify for each row.
-    for(int row=0; row < rowCount(features); ++row)
-    {
 
-        // remove the use of currentRow.  can't apply test for NaN's, since we don't know yet which offsets will be used in the tree
-        /*
+    // REMOVE THE LOOP OVER ROWS.  PredictProbabilities WAS PREVIOUSLY CALLED FOR A SINGLE ROW VECTOR OF FEATURES, MAINTAIN THIS STYLE. DLR
+//    //Classify for each row.
+//    for(int row=0; row < rowCount(features); ++row)
+//    {
+
+    // remove the use of currentRow.  can't apply test for NaN's, since we don't know yet which offsets will be used in the tree.  DLR
+    /*
         MultiArrayView<2, U, StridedArrayTag> currentRow(rowVector(features, row));
         
         // when the features contain an NaN, the instance doesn't belong to any class
@@ -1463,44 +1486,47 @@ void RandomForest<LabelType, PreprocessorTag>
         }
         */
 
-        ArrayVector<double>::const_iterator weights;
+    ArrayVector<double>::const_iterator weights;
 
-        //totalWeight == totalVoteCount!
-        double totalWeight = 0.0;
+    //totalWeight == totalVoteCount!
+    double totalWeight = 0.0;
 
-        //Let each tree classify...
-        for(int k=0; k<options_.tree_count_; ++k)
+    // PREVIOUSLY, ROW WAS ALWAYS ZERO.  NOW, IT'S A REAL ROW # INTO THE FEATURE ARRAY.  REPLACE ALL INSTANCES OF ROW IN PROB WITH ZERO, BELOW.
+
+    //Let each tree classify...
+    for(int k=0; k<options_.tree_count_; ++k)
+    {
+        //get weights predicted by single tree
+        weights = trees_[k /*tree_indices_[k]*/].predict(features, row);
+        //  weights = trees_[k /*tree_indices_[k]*/].predict(currentRow);
+
+        //update votecount.
+        int weighted = options_.predict_weighted_;
+        for(int l=0; l<ext_param_.class_count_; ++l)
         {
-            //get weights predicted by single tree
-            weights = trees_[k /*tree_indices_[k]*/].predict(features, row);
-//            weights = trees_[k /*tree_indices_[k]*/].predict(currentRow);
-
-            //update votecount.
-            int weighted = options_.predict_weighted_;
-            for(int l=0; l<ext_param_.class_count_; ++l)
-            {
-                double cur_w = weights[l] * (weighted * (*(weights-1))
-                                           + (1-weighted));
-                prob(row, l) += static_cast<T>(cur_w);
-                //every weight in totalWeight.
-                totalWeight += cur_w;
-            }
-            if(stop.after_prediction(weights, 
-                                     k,
-                                     rowVector(prob, row),
-                                     totalWeight))
-            {
-                break;
-            }
+            double cur_w = weights[l] * (weighted * (*(weights-1))
+                                         + (1-weighted));
+            // prob(row, l) += static_cast<T>(cur_w);
+            prob(0, l) += static_cast<T>(cur_w);
+            //every weight in totalWeight.
+            totalWeight += cur_w;
         }
-
-        //Normalise votes in each row by total VoteCount (totalWeight
-        for(int l=0; l< ext_param_.class_count_; ++l)
+        if(stop.after_prediction(weights,
+                                 k,
+//                                 rowVector(prob, row),
+                                 rowVector(prob, 0), // can replace this with just "prob"
+                                 totalWeight))
         {
-            prob(row, l) /= detail::RequiresExplicitCast<T>::cast(totalWeight);
+            break;
         }
     }
 
+    //Normalise votes in each row by total VoteCount (totalWeight
+    for(int l=0; l< ext_param_.class_count_; ++l)
+    {
+//        prob(row, l) /= detail::RequiresExplicitCast<T>::cast(totalWeight);
+        prob(0, l) /= detail::RequiresExplicitCast<T>::cast(totalWeight);
+    }
 }
 
 template <class LabelType, class PreprocessorTag>

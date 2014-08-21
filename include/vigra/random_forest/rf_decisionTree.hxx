@@ -90,6 +90,8 @@ class DecisionTree
     ArrayVector<TreeInt>  topology_;
     ArrayVector<double>   parameters_;
 
+    ArrayVector<int>      feature_type_;
+
     ProblemSpec<> ext_param_;
     unsigned int classCount_;
 
@@ -168,46 +170,24 @@ class DecisionTree
                       int                     const & row,
                       Visitor_t                     & visitor) const
     {
-        std::cout << "called getToLeaf" << std::endl;
+        // use rowVector to mimic earlier functioning of code
+        MultiArrayView<2, U, C> temp_features = rowVector(features, row);
 
         TreeInt index = 2;
         while(!isLeafNode(topology_[index]))
         {
-            visitor.visit_internal_node(*this, index, topology_[index], features);
+            // apparently visit_internal_node does nothing!
+//            visitor.visit_internal_node(*this, index, topology_[index], features);
+//            visitor.visit_internal_node(*this, index, topology_[index], temp_features);  // for now, pass it normal features as a rowVector() to mimic previous code
+
             switch(topology_[index])
             {
                 case i_ThresholdNode:
                 {
-                    Node<i_ThresholdNode> 
-                                node(topology_, parameters_, index);
+                    Node<i_ThresholdNode> node(topology_, parameters_, feature_type_, index);
 
-                    // now i'm at a specific node, can create the corresponding features, using feature_type
-                    // AGAIN, HARD-CODE A FEW THINGS FOR NOW
-                    Shape2 im_shape(288,556);
-                    int feature_type = node.feature_type();
-//                    std::cout << feature_type << std::endl;
-
-                    FeatureBase<U,C> * comp_features = nullptr;
-                    switch(feature_type)
-                    {
-                    case 0:
-                    {
-                        comp_features = new NormalFeatures<U,C>(features, im_shape);
-                    }   break;
-                    case 1:
-                    {
-                        comp_features = new OffsetFeatures<U,C>(features, im_shape, node.offset_x(), node.offset_y());
-                    }   break;
-                    case 2:
-                    {
-                        comp_features = new DiffFeatures<U,C>(features, im_shape, node.offset_x(), node.offset_y());
-                    }   break;
-                    }
-
-//                    index = node.next(features);
-
-                    index = node.next(*comp_features, row);
-                    delete comp_features;
+                    index = node.next(features, row);
+//                    index = node.next(*comp_features, row);
                     break;
                 }
                 // kill HyperplaneNode and HypersphereNode for now, because I don't use them, and don't want to update for new feature types
@@ -241,7 +221,9 @@ class DecisionTree
                                "encountered unknown internal Node Type");
             }
         }
-        visitor.visit_external_node(*this, index, topology_[index],features);
+        // visit_external_node also does nothing?
+//        visitor.visit_external_node(*this, index, topology_[index], temp_features);
+//        visitor.visit_external_node(*this, index, topology_[index],features);
         return index;
     }
     /* traverse tree to get statistics
@@ -397,6 +379,7 @@ void DecisionTree::learn(   MultiArrayView<2, U, C> const       & features,
     this->reset();
     topology_.reserve(256);
     parameters_.reserve(256);
+    feature_type_.reserve(256);
     topology_.push_back(features.shape(1));
     topology_.push_back(classCount_);
     continueLearn(features,labels,stack_entry,split,stop,visitor,randint);
@@ -500,9 +483,10 @@ void DecisionTree::continueLearn(MultiArrayView<2, U, C> const       & features,
             stack.push_back(child_stack_entry[1]);
         }
 
-        //copy the newly created node form the split functor to the
+        // ALSO NEED TO SAVE THE OFFSETS AND FEATURE TYPE HERE!!!
+        //copy the newly created node from the split functor to the
         //decision tree.
-        NodeBase node(split.createNode(), topology_, parameters_ );
+        NodeBase node(split.createNode(), topology_, parameters_, feature_type_);
     }
     if(garbaged_child!=-1)
     {
