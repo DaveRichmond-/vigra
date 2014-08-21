@@ -90,8 +90,6 @@ class DecisionTree
     ArrayVector<TreeInt>  topology_;
     ArrayVector<double>   parameters_;
 
-    ArrayVector<int>      feature_type_;
-
     ProblemSpec<> ext_param_;
     unsigned int classCount_;
 
@@ -170,9 +168,6 @@ class DecisionTree
                       int                     const & row,
                       Visitor_t                     & visitor) const
     {
-        // use rowVector to mimic earlier functioning of code
-        MultiArrayView<2, U, C> temp_features = rowVector(features, row);
-
         TreeInt index = 2;
         while(!isLeafNode(topology_[index]))
         {
@@ -184,7 +179,7 @@ class DecisionTree
             {
                 case i_ThresholdNode:
                 {
-                    Node<i_ThresholdNode> node(topology_, parameters_, feature_type_, index);
+                    Node<i_ThresholdNode> node(topology_, parameters_, index);
 
                     index = node.next(features, row);
 //                    index = node.next(*comp_features, row);
@@ -379,7 +374,6 @@ void DecisionTree::learn(   MultiArrayView<2, U, C> const       & features,
     this->reset();
     topology_.reserve(256);
     parameters_.reserve(256);
-    feature_type_.reserve(256);
     topology_.push_back(features.shape(1));
     topology_.push_back(classCount_);
     continueLearn(features,labels,stack_entry,split,stop,visitor,randint);
@@ -486,7 +480,7 @@ void DecisionTree::continueLearn(MultiArrayView<2, U, C> const       & features,
         // ALSO NEED TO SAVE THE OFFSETS AND FEATURE TYPE HERE!!!
         //copy the newly created node from the split functor to the
         //decision tree.
-        NodeBase node(split.createNode(), topology_, parameters_, feature_type_);
+        NodeBase node(split.createNode(), topology_, parameters_);
     }
     if(garbaged_child!=-1)
     {

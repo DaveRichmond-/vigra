@@ -103,7 +103,6 @@ class SplitBase
 
     NodeBase::T_Container_type          t_data;
     NodeBase::P_Container_type          p_data;
-    NodeBase::FT_Container_type         ft_data;
 
     NodeBase                            node_;
 
@@ -141,7 +140,6 @@ class SplitBase
     {
         t_data.resize(2);
         p_data.resize(0);
-        ft_data.resize(0);
     }
 
 
@@ -1154,15 +1152,15 @@ class ThresholdSplit: public SplitBase<Tag>
             return  this->makeTerminalNode(features, labels, region, randint);      // doesn't actually use features, so i left this alone
         
         //create a Node for output
-        Node<i_ThresholdNode>   node(SB::t_data, SB::p_data, SB::ft_data);
+        Node<i_ThresholdNode>   node(SB::t_data, SB::p_data);
         SB::node_ = node;
         node.threshold()    = min_thresholds_[bestSplitIndex];
         node.column()       = splitColumns[bestSplitIndex];
 
         // also store the feature type and offsets, for look-up in the prediction phase
         node.feature_type() = feature_type;
-//        node.offset_x()     = offset_x;
-//        node.offset_y()     = offset_y;
+        node.offset_x()     = offset_x;
+        node.offset_y()     = offset_y;
 
         // partition the range according to the best dimension
         SortSamplesByDimensions<FeatureBase<T, C> >
