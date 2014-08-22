@@ -1070,6 +1070,8 @@ void RandomForest<LabelType, PreprocessorTag>::
     split.set_external_parameters(ext_param_);
     stop.set_external_parameters(ext_param_);
 
+    // also need to give it max_offsets and image_shape
+    split.options_ = options_;
 
     //initialize trees.
     trees_.resize(options_.tree_count_, DecisionTree_t(ext_param_));
@@ -1496,6 +1498,9 @@ void RandomForest<LabelType, PreprocessorTag>
     //Let each tree classify...
     for(int k=0; k<options_.tree_count_; ++k)
     {
+        // write options into kth tree (only really need image_size_)
+        trees_[k].set_options() = options_;
+
         //get weights predicted by single tree
         weights = trees_[k /*tree_indices_[k]*/].predict(features, row);
         //  weights = trees_[k /*tree_indices_[k]*/].predict(currentRow);

@@ -87,11 +87,13 @@ class DecisionTree
      */
     typedef Int32 TreeInt;
 
-    ArrayVector<TreeInt>  topology_;
-    ArrayVector<double>   parameters_;
+    ArrayVector<TreeInt>            topology_;
+    ArrayVector<double>             parameters_;
 
-    ProblemSpec<> ext_param_;
-    unsigned int classCount_;
+    ProblemSpec<>                   ext_param_;
+    unsigned int                    classCount_;
+
+    mutable RandomForestOptions     options_;
 
 
   public:
@@ -112,6 +114,13 @@ class DecisionTree
         topology_.clear();
         parameters_.clear();
     }
+
+    //
+    RandomForestOptions & set_options() const
+    {
+        return options_;
+    }
+
 
 
     /* learn a Tree
@@ -181,7 +190,7 @@ class DecisionTree
                 {
                     Node<i_ThresholdNode> node(topology_, parameters_, index);
 
-                    index = node.next(features, row);
+                    index = node.next(features, row, options_.image_shape_);
 //                    index = node.next(*comp_features, row);
                     break;
                 }

@@ -476,29 +476,25 @@ class Node<i_ThresholdNode>
 //    }
 
     template<class U, class C>
-    BT::INT  next(MultiArrayView<2,U,C> const & features, int const & row) const
+    BT::INT  next(MultiArrayView<2,U,C> const & features, int const & row, Shape2 const & image_shape) const
     {
 
         // now i'm at a specific node, can create the corresponding features, using feature_type
-        // AGAIN, HARD-CODE A FEW THINGS FOR NOW
-        Shape2 im_shape(288,556);
-
         FeatureBase<U,C> * comp_features = nullptr;
 
-//        switch(feature_type())
-        switch(0)
+        switch(feature_type())
         {
         case 0:
         {
-            comp_features = new NormalFeatures<U,C>(features, im_shape);
+            comp_features = new NormalFeatures<U,C>(features, image_shape);
         }   break;
         case 1:
         {
-            comp_features = new OffsetFeatures<U,C>(features, im_shape, offset_x(), offset_y());  // CHANGE TO FNCT CALLS
+            comp_features = new OffsetFeatures<U,C>(features, image_shape, offset_x(), offset_y());
         }   break;
         case 2:
         {
-            comp_features = new DiffFeatures<U,C>(features, im_shape, offset_x(), offset_y());
+            comp_features = new DiffFeatures<U,C>(features, image_shape, offset_x(), offset_y());
         }   break;
         }
 

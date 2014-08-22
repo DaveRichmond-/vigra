@@ -51,6 +51,7 @@
 //#include "../hokashyap.hxx"
 //#include "vigra/rf_helpers.hxx"
 
+#include "rf_common.hxx"
 #include <vigra/random_forest/features.hxx>
 
 namespace vigra
@@ -100,6 +101,7 @@ class SplitBase
                                         StackEntry_t;
 
     ProblemSpec<>                       ext_param_;
+    RandomForestOptions                 options_;
 
     NodeBase::T_Container_type          t_data;
     NodeBase::P_Container_type          p_data;
@@ -1077,13 +1079,11 @@ class ThresholdSplit: public SplitBase<Tag>
                       splitColumns[ii+ randint(features.shape(1) - ii)]);
 
 
-//        // select which type of features to calculate: NormalFeatures, OffsetFeatures, DiffFeatures
+        // calculate the new feature type: NormalFeatures, OffsetFeatures, DiffFeatures
 
-        // HARD-CODE A FEW THINGS FOR NOW.  LATER, ADD MAX_OFFSET AS AN OPTION INTO THE RANDOM FOREST OPTIONS OBJECT.  NOT SURE WHERE TO ADD IM_SHAPE_
-        int feature_type = randint(3);  // uniform probability between the three options
-        int max_offset_x = 50;
-        int max_offset_y = 50;
-        Shape2 im_shape(288, 556);
+        int max_offset_x = SB::options_.max_offset_x_;
+        int max_offset_y = SB::options_.max_offset_y_;
+        Shape2 image_shape = SB::options_.image_shape_;
 
         // randomly select xy-offset into image
         int offset_x = randint(2*max_offset_x + 1) - max_offset_x;
@@ -1091,20 +1091,21 @@ class ThresholdSplit: public SplitBase<Tag>
 
         FeatureBase<T,C> * comp_features = nullptr;
 
-        switch(0)   // HARD-CODE
-//        switch(feature_type)
+        int feature_type = randint(3);  // uniform probability between the three options
+
+        switch(feature_type)
         {
         case 0:
         {
-            comp_features = new NormalFeatures<T,C>(features, im_shape);
+            comp_features = new NormalFeatures<T,C>(features, image_shape);
         }   break;
         case 1:
         {
-            comp_features = new OffsetFeatures<T,C>(features, im_shape, offset_x, offset_y);
+            comp_features = new OffsetFeatures<T,C>(features, image_shape, offset_x, offset_y);
         }   break;
         case 2:
         {
-            comp_features = new DiffFeatures<T,C>(features, im_shape, offset_x, offset_y);
+            comp_features = new DiffFeatures<T,C>(features, image_shape, offset_x, offset_y);
         }   break;
         }
 

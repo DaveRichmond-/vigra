@@ -173,16 +173,13 @@ class RandomForestOptions
     /**\name sampling options*/
     /*\{*/
     // look at the member access functions for documentation
-    double  training_set_proportion_;
-    int     training_set_size_;
-    int (*training_set_func_)(int);
-    RF_OptionTag
-        training_set_calc_switch_;
+    double                  training_set_proportion_;
+    int                     training_set_size_;
+    int                     (*training_set_func_)(int);
+    RF_OptionTag            training_set_calc_switch_;
 
-    bool    sample_with_replacement_;
-    RF_OptionTag
-            stratification_method_;
-
+    bool                    sample_with_replacement_;
+    RF_OptionTag            stratification_method_;
 
     /**\name general random forest options
      *
@@ -190,15 +187,21 @@ class RandomForestOptions
      * stopping predicates
      */
     /*\{*/
-    RF_OptionTag    mtry_switch_;
-    int     mtry_;
-    int (*mtry_func_)(int) ;
+    RF_OptionTag            mtry_switch_;
+    int                     mtry_;
+    int                     (*mtry_func_)(int);
 
-    bool predict_weighted_; 
-    int tree_count_;
-    int min_split_node_size_;
-    bool prepare_online_learning_;
+    bool                    predict_weighted_;
+    int                     tree_count_;
+    int                     min_split_node_size_;
+    bool                    prepare_online_learning_;
     /*\}*/
+
+    // name random forest options for generating contextual features
+    int                     max_offset_x_;    // offset_x is within [-,+] max_offset_x_ for Diff-, Offset-Features
+    int                     max_offset_y_;    // offset_y is within [-,+] max_offset_y_ for Diff-, Offset-Features
+    Shape2                  image_shape_;     // shape of image that is being processed.  required for changing x-y offsets into array index offsets.
+
 
     typedef ArrayVector<double> double_array;
     typedef std::map<std::string, double_array> map_type;
@@ -511,6 +514,26 @@ class RandomForestOptions
         min_split_node_size_ = in;
         return *this;
     }
+
+    // additional setter methods for max_offset_x_,y_ and image_shape_
+    RandomForestOptions & max_offset_x(int in)
+    {
+        max_offset_x_ = in;
+        return *this;
+    }
+
+    RandomForestOptions & max_offset_y(int in)
+    {
+        max_offset_y_ = in;
+        return *this;
+    }
+
+    RandomForestOptions & image_shape(Shape2 in)
+    {
+        image_shape_ = in;
+        return *this;
+    }
+
 };
 
 
@@ -549,16 +572,16 @@ public:
     int                     row_count_;       // number of samples
 
     int                     actual_mtry_;     // mtry used in training
-    int                     actual_msample_;  // number if in-bag samples per tree
+    int                     actual_msample_;  // number of in-bag samples per tree
 
     Problem_t               problem_type_;    // classification or regression
     
-    int used_;                                // this ProblemSpec is valid
+    int                     used_;            // this ProblemSpec is valid
     ArrayVector<double>     class_weights_;   // if classes have different importance
     int                     is_weighted_;     // class_weights_ are used
     double                  precision_;       // termination criterion for regression loss
     int                     response_size_; 
-        
+
     template<class T> 
     void to_classlabel(int index, T & out) const
     {
