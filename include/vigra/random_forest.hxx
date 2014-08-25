@@ -638,7 +638,6 @@ class RandomForest
      */
     template <class U, class C>
     LabelType predictLabel(MultiArrayView<2, U, C> const & features,
-                           int                     const & row,
                            ArrayVectorView<double>         prior) const;
 
     /** \brief predict multiple labels with given features
@@ -728,27 +727,53 @@ class RandomForest
 
     template <class U, class C1, class T, class C2, class Stop>
     void predictProbabilities(MultiArrayView<2, U, C1> const & features,
+                              MultiArrayView<2, T, C2>       & prob,
+                              Stop                           & stop) const;
+
+    template <class U, class C1, class T, class C2>
+    void predictProbabilities(MultiArrayView<2, U, C1>  const & features,
+                              MultiArrayView<2, T, C2>        & prob)  const
+    {
+        predictProbabilities(features, prob, rf_default());
+    }   
+
+    template <class T1,class T2, class C>
+    void predictProbabilities(OnlinePredictionSet<T1>   &  predictionSet,
+                               MultiArrayView<2, T2, C> &  prob);
+
+    /** \brief predict the class probabilities for a single label
+     *
+     *  \param features same as above
+     *  \param row: the row index of the sample that you want to classify
+     *  \param prob a n x class_count_ matrix. passed by reference to
+     *  save class probabilities
+     *  \param stop earlystopping criterion
+     *  \sa EarlyStopping
+
+        When a row of the feature array contains an NaN, the corresponding instance
+        cannot belong to any of the classes. The corresponding row in the probability
+        array will therefore contain all zeros.
+     */
+
+
+    template <class U, class C1, class T, class C2, class Stop>
+    void predictProbabilities(MultiArrayView<2, U, C1> const & features,
                               int                      const & row,
                               MultiArrayView<2, T, C2>       & prob,
                               Stop                           & stop) const;
 
-    template <class T1,class T2, class C>
-    void predictProbabilities(OnlinePredictionSet<T1> &  predictionSet,
-                               MultiArrayView<2, T2, C> &       prob);
-
-    /** \brief predict the class probabilities for multiple labels
-     *
-     *  \param features same as above
-     *  \param prob a n x class_count_ matrix. passed by reference to
-     *  save class probabilities
-     */
     template <class U, class C1, class T, class C2>
     void predictProbabilities(MultiArrayView<2, U, C1>  const & features,
                               int                       const & row,
                               MultiArrayView<2, T, C2>        & prob)  const
     {
         predictProbabilities(features, row, prob, rf_default());
-    }   
+    }
+
+
+
+
+    /** predict Raw(?) */
 
     template <class U, class C1, class T, class C2>
     void predictRaw(MultiArrayView<2, U, C1>const &   features,
@@ -1117,123 +1142,6 @@ void RandomForest<LabelType, PreprocessorTag>::
 }
 
 
-// overloaded version of learn, which accepts features of type NewFeatures.  DLR
-//template <class LabelType, class PreprocessorTag>
-//template <class U, class C1,
-//         class U2,class C2,
-//         class Split_t,
-//         class Stop_t,
-//         class Visitor_t,
-//         class Random_t>
-//void RandomForest<LabelType, PreprocessorTag>::
-//                     learn( NewFeatures<U, C1>       const  &   features,
-//                            MultiArrayView<2, U2,C2> const  &   response,
-//                            Visitor_t                           visitor_,
-//                            Split_t                             split_,
-//                            Stop_t                              stop_,
-//                            Random_t                 const  &   random)
-//{
-//    using namespace rf;
-//    //this->reset();
-//    //typedefs
-//    typedef          UniformIntRandomFunctor<Random_t>
-//                                                    RandFunctor_t;
-
-//    // See rf_preprocessing.hxx for more info on this
-//    typedef Processor<PreprocessorTag,LabelType, U, C1, U2, C2> Preprocessor_t;
-
-//    vigra_precondition(features.shape(0) == response.shape(0),
-//        "RandomForest::learn(): shape mismatch between features and response.");
-
-//    // default values and initialization
-//    // Value Chooser chooses second argument as value if first argument
-//    // is of type RF_DEFAULT. (thanks to template magic - don't care about
-//    // it - just smile and wave).
-
-//    #define RF_CHOOSER(type_) detail::Value_Chooser<type_, Default_##type_>
-//    Default_Stop_t default_stop(options_);
-//    typename RF_CHOOSER(Stop_t)::type stop
-//            = RF_CHOOSER(Stop_t)::choose(stop_, default_stop);
-//    Default_Split_t default_split;
-//    typename RF_CHOOSER(Split_t)::type split
-//            = RF_CHOOSER(Split_t)::choose(split_, default_split);
-//    rf::visitors::StopVisiting stopvisiting;
-//    typedef  rf::visitors::detail::VisitorNode<
-//                rf::visitors::OnlineLearnVisitor,
-//                typename RF_CHOOSER(Visitor_t)::type> IntermedVis;
-//    IntermedVis
-//        visitor(online_visitor_, RF_CHOOSER(Visitor_t)::choose(visitor_, stopvisiting));
-//    #undef RF_CHOOSER
-//    if(options_.prepare_online_learning_)
-//        online_visitor_.activate();
-//    else
-//        online_visitor_.deactivate();
-
-
-//    // Make stl compatible random functor.
-//    RandFunctor_t           randint     ( random);
-
-
-//    // Preprocess the data to get something the split functor can work
-//    // with. Also fill the ext_param structure by preprocessing
-//    // option parameters that could only be completely evaluated
-//    // when the training data is known.
-//    Preprocessor_t preprocessor(    features, response,
-//                                    options_, ext_param_);
-
-//    // Give the Split functor information about the data.
-//    split.set_external_parameters(ext_param_);
-//    stop.set_external_parameters(ext_param_);
-
-
-//    //initialize trees.
-//    trees_.resize(options_.tree_count_  , DecisionTree_t(ext_param_));
-
-//    Sampler<Random_t > sampler(preprocessor.strata().begin(),
-//                               preprocessor.strata().end(),
-//                               detail::make_sampler_opt(options_)
-//                                        .sampleSize(ext_param().actual_msample_),
-//                               &random);
-
-//    visitor.visit_at_beginning(*this, preprocessor);
-//    // THE MAIN EFFING RF LOOP - YEAY DUDE!
-
-//    for(int ii = 0; ii < (int)trees_.size(); ++ii)
-//    {
-//        //initialize First region/node/stack entry
-//        sampler
-//            .sample();
-//        StackEntry_t
-//            first_stack_entry(  sampler.sampledIndices().begin(),
-//                                sampler.sampledIndices().end(),
-//                                ext_param_.class_count_);
-//        first_stack_entry
-//            .set_oob_range(     sampler.oobIndices().begin(),
-//                                sampler.oobIndices().end());
-//        trees_[ii]
-//            .learn(             preprocessor.features(),
-//                                preprocessor.response(),
-//                                first_stack_entry,
-//                                split,
-//                                stop,
-//                                visitor,
-//                                randint);
-//        visitor
-//            .visit_after_tree(  *this,
-//                                preprocessor,
-//                                sampler,
-//                                first_stack_entry,
-//                                ii);
-//    }
-
-//    visitor.visit_at_end(*this, preprocessor);
-//    // Only for online learning?
-//    online_visitor_.deactivate();
-//}
-
-
-
-
 template <class LabelType, class Tag>
 template <class U, class C, class Stop>
 LabelType RandomForest<LabelType, Tag>
@@ -1265,7 +1173,6 @@ template <class LabelType, class PreprocessorTag>
 template <class U, class C>
 LabelType RandomForest<LabelType, PreprocessorTag>
     ::predictLabel( MultiArrayView<2, U, C> const & features,
-                    int                     const & row,
                     ArrayVectorView<double>         priors) const
 {
     using namespace functor;
@@ -1425,6 +1332,105 @@ void RandomForest<LabelType,PreprocessorTag>
     }
 }
 
+template <class LabelType, class PreprocessorTag>
+template <class U, class C1, class T, class C2, class Stop_t>
+void RandomForest<LabelType, PreprocessorTag>
+    ::predictProbabilities(MultiArrayView<2, U, C1> const & features,
+                           MultiArrayView<2, T, C2>       & prob,
+                           Stop_t                         & stop_) const
+{
+    // Features are n x p
+    // prob is n x NumOfLabel probability for each feature in each class
+
+    vigra_precondition(rowCount(features) == rowCount(prob),
+      "RandomForestn::predictProbabilities():"
+        " Feature matrix and probability matrix size mismatch.");
+
+    // num of features must be bigger than num of features in Random forest training
+    // but why bigger?
+    vigra_precondition( columnCount(features) >= ext_param_.column_count_,
+      "RandomForestn::predictProbabilities():"
+        " Too few columns in feature matrix.");
+    vigra_precondition( columnCount(prob) == (MultiArrayIndex)ext_param_.class_count_,
+      "RandomForestn::predictProbabilities():"
+      " Probability matrix must have as many columns as there are classes.");
+
+    #define RF_CHOOSER(type_) detail::Value_Chooser<type_, Default_##type_>
+    Default_Stop_t default_stop(options_);
+    typename RF_CHOOSER(Stop_t)::type & stop
+            = RF_CHOOSER(Stop_t)::choose(stop_, default_stop);
+    #undef RF_CHOOSER
+    stop.set_external_parameters(ext_param_, tree_count());
+    prob.init(NumericTraits<T>::zero());
+    /* This code was originally there for testing early stopping
+     * - we wanted the order of the trees to be randomized
+    if(tree_indices_.size() != 0)
+    {
+       std::random_shuffle(tree_indices_.begin(),
+                           tree_indices_.end());
+    }
+    */
+
+    //Classify for each row.
+    for(int row=0; row < features.shape(0); ++row)
+    {
+
+        // remove the use of currentRow.  can't apply test for NaN's, since we don't know yet which offsets will be used in the tree.  DLR
+        /*
+        MultiArrayView<2, U, StridedArrayTag> currentRow(rowVector(features, row));
+
+        // when the features contain an NaN, the instance doesn't belong to any class
+        // => indicate this by returning a zero probability array.
+        if(detail::contains_nan(currentRow))
+        {
+            rowVector(prob, row).init(0.0);
+            continue;
+        }
+        */
+
+        ArrayVector<double>::const_iterator weights;
+
+        //totalWeight == totalVoteCount!
+        double totalWeight = 0.0;
+
+        //Let each tree classify...
+        for(int k=0; k<options_.tree_count_; ++k)
+        {
+            // write options into kth tree (only really need image_size_)
+            trees_[k].set_options() = options_;
+
+            //get weights predicted by single tree
+            weights = trees_[k /*tree_indices_[k]*/].predict(features, row);
+            //  weights = trees_[k /*tree_indices_[k]*/].predict(currentRow);
+
+            //update votecount.
+            int weighted = options_.predict_weighted_;
+            for(int l=0; l<ext_param_.class_count_; ++l)
+            {
+                double cur_w = weights[l] * (weighted * (*(weights-1))
+                                             + (1-weighted));
+                 prob(row, l) += static_cast<T>(cur_w);
+                //every weight in totalWeight.
+                totalWeight += cur_w;
+            }
+            if(stop.after_prediction(weights,
+                                     k,
+                                     rowVector(prob, row),
+                                     totalWeight))
+            {
+                break;
+            }
+        }
+
+        //Normalise votes in each row by total VoteCount (totalWeight
+        for(int l=0; l< ext_param_.class_count_; ++l)
+        {
+            prob(row, l) /= detail::RequiresExplicitCast<T>::cast(totalWeight);
+        }
+    }
+}
+
+// predictProbabilities for a single pixel (i.e. specified row into the feature array)
 template <class LabelType, class PreprocessorTag>
 template <class U, class C1, class T, class C2, class Stop_t>
 void RandomForest<LabelType, PreprocessorTag>
