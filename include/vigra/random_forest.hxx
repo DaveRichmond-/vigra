@@ -1067,11 +1067,9 @@ void RandomForest<LabelType, PreprocessorTag>::
                                 options_, ext_param_);
 
     // Give the Split functor information about the data.
+    split.options_ = options_;  // first give it info about max_offsets and image_shape
     split.set_external_parameters(ext_param_);
     stop.set_external_parameters(ext_param_);
-
-    // also need to give it max_offsets and image_shape
-    split.options_ = options_;
 
     //initialize trees.
     trees_.resize(options_.tree_count_, DecisionTree_t(ext_param_));

@@ -1009,19 +1009,22 @@ class ThresholdSplit: public SplitBase<Tag>
 
     typedef SplitBase<Tag> SB;
     
-    ArrayVector<Int32>          splitColumns;
-    ColumnDecisionFunctor       bgfunc;
+    ArrayVector<Int32>              splitColumns;
+    ColumnDecisionFunctor           bgfunc;
 
-    double                      region_gini_;
-    ArrayVector<double>         min_gini_;
-    ArrayVector<std::ptrdiff_t> min_indices_;
-    ArrayVector<double>         min_thresholds_;
+    double                          region_gini_;
 
-    int                         bestSplitIndex;
+    // change all of these to be 2D
+    MultiArray<2, double>           min_gini_;
+    MultiArray<2, std::ptrdiff_t>   min_indices_;
+    MultiArray<2, double>           min_thresholds_;
+
+    int                             bestSplitIndex;
+    int                             bestSplitIndex2;
 
     double minGini() const
     {
-        return min_gini_[bestSplitIndex];
+        return min_gini_(bestSplitIndex, bestSplitIndex2);
     }
     int bestSplitColumn() const
     {
@@ -1029,7 +1032,7 @@ class ThresholdSplit: public SplitBase<Tag>
     }
     double bestSplitThreshold() const
     {
-        return min_thresholds_[bestSplitIndex];
+        return min_thresholds_(bestSplitIndex, bestSplitIndex2);
     }
 
     template<class T>
@@ -1041,9 +1044,13 @@ class ThresholdSplit: public SplitBase<Tag>
         splitColumns.resize(featureCount_);
         for(int k=0; k<featureCount_; ++k)
             splitColumns[k] = k;
-        min_gini_.resize(featureCount_);
-        min_indices_.resize(featureCount_);
-        min_thresholds_.resize(featureCount_);
+        int size_Dim2 = SB::options_.feature_mix_[0] + SB::options_.feature_mix_[1] + SB::options_.feature_mix_[2];
+        min_gini_.reshape(Shape2(featureCount_, size_Dim2));
+        min_indices_.reshape(Shape2(featureCount_, size_Dim2));
+        min_thresholds_.reshape(Shape2(featureCount_, size_Dim2));
+//        min_gini_.resize(featureCount_);
+//        min_indices_.resize(featureCount_);
+//        min_thresholds_.resize(featureCount_);
     }
 
 
@@ -1079,98 +1086,200 @@ class ThresholdSplit: public SplitBase<Tag>
                       splitColumns[ii+ randint(features.shape(1) - ii)]);
 
 
-        // calculate the new feature type: NormalFeatures, OffsetFeatures, DiffFeatures
-
+        // import some of the RF options that are needed for generating contextual features
         int max_offset_x = SB::options_.max_offset_x_;
         int max_offset_y = SB::options_.max_offset_y_;
         Shape2 image_shape = SB::options_.image_shape_;
 
-        // randomly select xy-offset into image
-        int offset_x = randint(2*max_offset_x + 1) - max_offset_x;
-        int offset_y = randint(2*max_offset_y + 1) - max_offset_y;
-
-        FeatureBase<T,C> * comp_features = nullptr;
-
-        int feature_type = randint(3);  // uniform probability between the three options
-
-        switch(feature_type)
-        {
-        case 0:
-        {
-            comp_features = new NormalFeatures<T,C>(features, image_shape);
-        }   break;
-        case 1:
-        {
-            comp_features = new OffsetFeatures<T,C>(features, image_shape, offset_x, offset_y);
-        }   break;
-        case 2:
-        {
-            comp_features = new DiffFeatures<T,C>(features, image_shape, offset_x, offset_y);
-        }   break;
-        }
-
         // find the best gini index
         bestSplitIndex              = 0;
+        bestSplitIndex2             = 0;
+        int     best_feature_type   = 0;
+        int     best_offset_x       = 0;
+        int     best_offset_y       = 0;
         double  current_min_gini    = region_gini_;
-        int     num2try             = (*comp_features).shape(1);
-//        int     num2try             = features.shape(1);
+        int     num2try             = features.shape(1);
+
         for(int k=0; k<num2try; ++k)
         {
-            //this functor does all the work
-            bgfunc(*comp_features,
-                   splitColumns[k],
-                   labels,
-                   region.begin(), region.end(),
-                   region.classCounts());
-//            bgfunc(columnVector(features, splitColumns[k]),
-//                   labels,
-//                   region.begin(), region.end(),
-//                   region.classCounts());
 
-            min_gini_[k]            = bgfunc.min_gini_;
-            min_indices_[k]         = bgfunc.min_index_;
-            min_thresholds_[k]      = bgfunc.min_threshold_;
-#ifdef CLASSIFIER_TEST
-            if(     bgfunc.min_gini_ < current_min_gini
-               &&  !closeAtTolerance(bgfunc.min_gini_, current_min_gini))
-#else
-            if(bgfunc.min_gini_ < current_min_gini)
-#endif
+            // keep a counter through aggregated array of different feature types
+            int counter = 0;
+
+            // Normal Features
+            for(int i = 0; i < SB::options_.feature_mix_[0]; ++i)
             {
-                current_min_gini = bgfunc.min_gini_;
-                childRegions[0].classCounts() = bgfunc.bestCurrentCounts[0];
-                childRegions[1].classCounts() = bgfunc.bestCurrentCounts[1];
-                childRegions[0].classCountsIsValid = true;
-                childRegions[1].classCountsIsValid = true;
+                // initialize comp_features
+                FeatureBase<T,C> * comp_features = nullptr;
+                comp_features = new NormalFeatures<T,C>(features, image_shape);
 
-                bestSplitIndex   = k;
-                num2try = SB::ext_param_.actual_mtry_;
+                //this functor does all the work
+                bgfunc(*comp_features,
+                       splitColumns[k],
+                       labels,
+                       region.begin(), region.end(),
+                       region.classCounts());
+
+                min_gini_(k,counter)            = bgfunc.min_gini_;
+                min_indices_(k,counter)         = bgfunc.min_index_;
+                min_thresholds_(k,counter)      = bgfunc.min_threshold_;
+#ifdef CLASSIFIER_TEST
+                if(     bgfunc.min_gini_ < current_min_gini
+                        &&  !closeAtTolerance(bgfunc.min_gini_, current_min_gini))
+#else
+                if(bgfunc.min_gini_ < current_min_gini)
+#endif
+                {
+                    current_min_gini = bgfunc.min_gini_;
+                    childRegions[0].classCounts() = bgfunc.bestCurrentCounts[0];
+                    childRegions[1].classCounts() = bgfunc.bestCurrentCounts[1];
+                    childRegions[0].classCountsIsValid = true;
+                    childRegions[1].classCountsIsValid = true;
+
+                    bestSplitIndex      = k;
+                    bestSplitIndex2     = counter;
+                    best_feature_type   = 0;
+                    num2try             = SB::ext_param_.actual_mtry_;
+                }
+                ++counter;
+
+                // clear dynamically allocated memory
+                delete comp_features;
+
             }
+
+            // Offset Features
+            int offset_x = 0;
+            int offset_y = 0;
+            for(int i = 0; i < SB::options_.feature_mix_[1]; ++i)
+            {
+                // calc random offsets
+                offset_x = randint(2*max_offset_x + 1) - max_offset_x;
+                offset_y = randint(2*max_offset_y + 1) - max_offset_y;
+
+                // assign comp_features to be an Offset Feature
+                FeatureBase<T,C> * comp_features = nullptr;
+                comp_features = new OffsetFeatures<T,C>(features, image_shape, offset_x, offset_y);
+
+                //this functor does all the work
+                bgfunc(*comp_features,
+                       splitColumns[k],
+                       labels,
+                       region.begin(), region.end(),
+                       region.classCounts());
+
+                min_gini_(k,counter)            = bgfunc.min_gini_;
+                min_indices_(k,counter)         = bgfunc.min_index_;
+                min_thresholds_(k,counter)      = bgfunc.min_threshold_;
+#ifdef CLASSIFIER_TEST
+                if(     bgfunc.min_gini_ < current_min_gini
+                        &&  !closeAtTolerance(bgfunc.min_gini_, current_min_gini))
+#else
+                if(bgfunc.min_gini_ < current_min_gini)
+#endif
+                {
+                    current_min_gini = bgfunc.min_gini_;
+                    childRegions[0].classCounts() = bgfunc.bestCurrentCounts[0];
+                    childRegions[1].classCounts() = bgfunc.bestCurrentCounts[1];
+                    childRegions[0].classCountsIsValid = true;
+                    childRegions[1].classCountsIsValid = true;
+
+                    bestSplitIndex      = k;
+                    bestSplitIndex2     = counter;     // now have a 2d array.  Need to know which column of min_thresholds_ stores the best threshold (why not just write the min_threshold directly?)
+                    best_feature_type   = 1;
+                    best_offset_x       = offset_x;
+                    best_offset_y       = offset_y;
+                    num2try             = SB::ext_param_.actual_mtry_;
+                }
+                ++counter;
+                // clear dynamically allocated memory
+                delete comp_features;
+
+            }
+
+            for(int i = 0; i < SB::options_.feature_mix_[2]; ++i)
+            {
+                // calc random offsets
+                offset_x = randint(2*max_offset_x + 1) - max_offset_x;
+                offset_y = randint(2*max_offset_y + 1) - max_offset_y;
+
+                // assign comp_features to be an Offset Feature
+                FeatureBase<T,C> * comp_features = nullptr;
+                comp_features = new DiffFeatures<T,C>(features, image_shape, offset_x, offset_y);
+
+                //this functor does all the work
+                bgfunc(*comp_features,
+                       splitColumns[k],
+                       labels,
+                       region.begin(), region.end(),
+                       region.classCounts());
+
+                min_gini_(k,counter)            = bgfunc.min_gini_;
+                min_indices_(k,counter)         = bgfunc.min_index_;
+                min_thresholds_(k,counter)      = bgfunc.min_threshold_;
+#ifdef CLASSIFIER_TEST
+                if(     bgfunc.min_gini_ < current_min_gini
+                        &&  !closeAtTolerance(bgfunc.min_gini_, current_min_gini))
+#else
+                if(bgfunc.min_gini_ < current_min_gini)
+#endif
+                {
+                    current_min_gini = bgfunc.min_gini_;
+                    childRegions[0].classCounts() = bgfunc.bestCurrentCounts[0];
+                    childRegions[1].classCounts() = bgfunc.bestCurrentCounts[1];
+                    childRegions[0].classCountsIsValid = true;
+                    childRegions[1].classCountsIsValid = true;
+
+                    bestSplitIndex      = k;
+                    bestSplitIndex2     = counter;     // now have a 2d array.  Need to know which column of min_thresholds_ stores the best threshold (why not just write the min_threshold directly?)
+                    best_feature_type   = 2;
+                    best_offset_x       = offset_x;
+                    best_offset_y       = offset_y;
+                    num2try             = SB::ext_param_.actual_mtry_;
+                }
+                ++counter;
+                // clear dynamically allocated memory
+                delete comp_features;
+
+            }
+
+
         }
-        //std::cerr << current_min_gini << "curr " << region_gini_ << std::endl;
         // did not find any suitable split
         if(closeAtTolerance(current_min_gini, region_gini_))
             return  this->makeTerminalNode(features, labels, region, randint);      // doesn't actually use features, so i left this alone
-        
+
         //create a Node for output
         Node<i_ThresholdNode>   node(SB::t_data, SB::p_data);
         SB::node_ = node;
-        node.threshold()    = min_thresholds_[bestSplitIndex];
+        node.threshold()    = min_thresholds_(bestSplitIndex, bestSplitIndex2);
         node.column()       = splitColumns[bestSplitIndex];
 
         // also store the feature type and offsets, for look-up in the prediction phase
-        node.feature_type() = feature_type;
-        node.offset_x()     = offset_x;
-        node.offset_y()     = offset_y;
+
+        node.feature_type() = best_feature_type;
+        node.offset_x()     = best_offset_x;
+        node.offset_y()     = best_offset_y;
 
         // partition the range according to the best dimension
+        FeatureBase<T,C> * comp_features = nullptr;
+        switch(node.feature_type())
+        {
+        case 0:
+            comp_features = new NormalFeatures<T,C>(features, image_shape);
+            break;
+        case 1:
+            comp_features = new OffsetFeatures<T,C>(features, image_shape, node.offset_x(), node.offset_y());
+            break;
+        case 2:
+            comp_features = new DiffFeatures<T,C>(features, image_shape, node.offset_x(), node.offset_y());
+            break;
+        }
         SortSamplesByDimensions<FeatureBase<T, C> >
-            sorter(*comp_features, node.column(), node.threshold());
-//        SortSamplesByDimensions<MultiArrayView<2, T, C> >
-//            sorter(features, node.column(), node.threshold());
+                sorter(*comp_features, node.column(), node.threshold());
 
         IndexIterator bestSplit =
-            std::partition(region.begin(), region.end(), sorter);
+                std::partition(region.begin(), region.end(), sorter);
         // Save the ranges of the child stack entries.
         childRegions[0].setRange(   region.begin()  , bestSplit       );
         childRegions[0].rule = region.rule;
