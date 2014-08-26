@@ -54,6 +54,64 @@ public:
 #endif //DOXYGEN
 };
 
+/* Stop predicting when you reach the specified max tree depth
+ */
+
+class EarlyStopDepth : public StopBase
+{
+   public:
+   int max_depth_;
+
+   EarlyStopDepth(int depth = 10) : max_depth_(depth)
+   {}
+
+   template<class T>
+   void set_external_parameters(ProblemSpec<T> const & /* prob */, int /* tree_count */ = 0, bool /* is_weighted_ */ = false)
+   {}
+
+   template<class Region>
+   bool operator()(Region& region)
+   {
+       return region.depth() >= max_depth_;
+   }
+
+   template<class WeightIter, class T, class C>
+   bool after_prediction(WeightIter,  int /* k */, MultiArrayView<2,T, C> /* prob */, double /* totalCt */)
+   {
+       return false;
+   }
+};
+
+/* Stop predicting when you reach the specified max tree depth OR if the node size drops below a certain value, whichever comes first.
+ */
+
+class EarlyStopDepthAndNodeSize : public StopBase
+{
+    public:
+    int max_depth_;
+    int min_split_node_size_;
+
+    EarlyStopDepthAndNodeSize(int depth = 10, int min_split_node_size = 1) : max_depth_(depth), min_split_node_size_(min_split_node_size)
+    {}
+
+    template<class T>
+    void set_external_parameters(ProblemSpec<T> const & /* prob */, int /* tree_count */ = 0, bool /* is_weighted_ */ = false)
+    {}
+
+    template<class Region>
+    bool operator()(Region& region)
+    {
+        return region.depth() >= max_depth_ || region.size() < min_split_node_size_;
+    }
+
+    template<class WeightIter, class T, class C>
+    bool after_prediction(WeightIter,  int /* k */, MultiArrayView<2, T,C> /* prob */, double /* totalCt */)
+    {
+        return false;
+    }
+};
+
+
 
 /**Stop predicting after a set number of trees
  */
