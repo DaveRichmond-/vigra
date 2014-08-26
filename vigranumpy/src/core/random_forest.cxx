@@ -271,9 +271,8 @@ pythonRFPredictProbabilities(RandomForest<LabelType> & rf,
     res.reshapeIfEmpty(MultiArrayShape<2>::type(testData.shape(0), rf.ext_param_.class_count_),
                        "RandomForest.predictProbabilities(): Output array has wrong dimensions.");
     {
-        std::cout << "careful, this assumes single sample (i.e., testData is a vector, not array)" << std::endl;    // DLR
         PyAllowThreads _pythread;
-        rf.predictProbabilities(testData, 0, res);
+        rf.predictProbabilities(testData, res);
     }
     return res;
 }
