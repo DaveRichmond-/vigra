@@ -50,6 +50,7 @@ static const char *const rf_hdf5_labels        = "labels";
 static const char *const rf_hdf5_topology      = "topology";
 static const char *const rf_hdf5_parameters    = "parameters";
 static const char *const rf_hdf5_tree          = "Tree_";
+static const char *const rf_hdf5_forest        = "Forest_";
 static const char *const rf_hdf5_version_group = ".";
 static const char *const rf_hdf5_version_tag   = "vigra_random_forest_version";
 static const double      rf_hdf5_version       =  0.1;
@@ -172,6 +173,51 @@ inline std::string get_cwd(HDF5File & h5context)
                      new-created group specified by the path name, which may
                      be either relative or absolute.
 */
+
+// over-loaded for an array of rf's
+template<class T, class Tag>
+void rf_export_HDF5(const ArrayVector<RandomForest<T, Tag> > & rf_cascade,
+                    HDF5File & h5context,
+                    const std::string & pathname = "")
+{
+    //
+    std::string cwd;
+    if (pathname.size()) {
+        cwd = detail::get_cwd(h5context);
+        h5context.cd_mk(pathname);
+    }
+
+    int forest_count = rf_cascade.size();
+    detail::padded_number_string forest_number(forest_count);
+    for (int j = 0; j < forest_count; ++j)
+    {
+        // make the folder for the forest
+        h5context.cd_mk(rf_hdf5_forest + forest_number(j));
+
+        // version attribute
+        h5context.writeAttribute(rf_hdf5_version_group, rf_hdf5_version_tag,
+                                 rf_hdf5_version);
+        // save serialized options
+        detail::options_export_HDF5(h5context, rf_cascade[j].options(), rf_hdf5_options);
+        // save external parameters
+        detail::problemspec_export_HDF5(h5context, rf_cascade[j].ext_param(),
+                                        rf_hdf5_ext_param);
+        // save trees
+        int tree_count = rf_cascade[j].options_.tree_count_;
+        detail::padded_number_string tree_number(tree_count);
+        for (int i = 0; i < tree_count; ++i)
+            detail::dt_export_HDF5(h5context, rf_cascade[j].tree(i), rf_hdf5_tree + tree_number(i));
+
+        // step up one directory
+        h5context.cd_up();
+    }
+
+    //
+    if (pathname.size())
+        h5context.cd(cwd);
+}
+
+
 template<class T, class Tag>
 void rf_export_HDF5(const RandomForest<T, Tag> & rf,
                     HDF5File & h5context,
@@ -194,8 +240,7 @@ void rf_export_HDF5(const RandomForest<T, Tag> & rf,
     int tree_count = rf.options_.tree_count_;
     detail::padded_number_string tree_number(tree_count);
     for (int i = 0; i < tree_count; ++i)
-        detail::dt_export_HDF5(h5context, rf.tree(i),
-                                                 rf_hdf5_tree + tree_number(i));
+        detail::dt_export_HDF5(h5context, rf.tree(i), rf_hdf5_tree + tree_number(i));
 
     if (pathname.size())
         h5context.cd(cwd);
@@ -264,6 +309,74 @@ void rf_export_HDF5(const RandomForest<T, Tag> & rf,
                      use the group specified by the path name, which may
                      be either relative or absolute.
 */
+
+// overloaded for an array of rf's
+template<class T, class Tag>
+bool rf_import_HDF5(ArrayVector<RandomForest<T, Tag> > & rf_cascade,
+                    HDF5File & h5context,
+                    const std::string & pathname = "")
+{
+    //
+    std::string cwd;
+    if (pathname.size()) {
+        cwd = detail::get_cwd(h5context);
+        h5context.cd(pathname);
+    }
+
+    std::vector<std::string> rfNames = h5context.ls();
+    std::vector<std::string>::const_iterator i;
+    for (i = rfNames.begin(); i != rfNames.end(); ++i)
+    {
+        if ((*i->rbegin() == '/') && (*i->begin() != '_')) // skip the above
+        {
+            // cd into forest directory
+            h5context.cd(*i);
+
+            // version attribute
+            if (h5context.existsAttribute(rf_hdf5_version_group, rf_hdf5_version_tag))
+            {
+                double read_version;
+                h5context.readAttribute(rf_hdf5_version_group, rf_hdf5_version_tag, read_version);
+                vigra_precondition(read_version <= rf_hdf5_version, "rf_import_HDF5(): unexpected file format version.");
+            }
+
+            // initialize an rf to store options/params/trees
+            RandomForest<T, Tag> rf;
+
+            // get serialized options
+            detail::options_import_HDF5(h5context, rf.options_, rf_hdf5_options);
+            // get external parameters
+            detail::problemspec_import_HDF5(h5context, rf.ext_param_, rf_hdf5_ext_param);
+
+            rf.trees_.clear();
+            // get all groups in base path
+            // no check for the rf_hdf5_tree prefix...
+            std::vector<std::string> names = h5context.ls();
+            std::vector<std::string>::const_iterator j;
+            for (j = names.begin(); j != names.end(); ++j)
+            {
+                if ((*j->rbegin() == '/') && (*j->begin() != '_')) // skip the above
+                {
+                    rf.trees_.push_back(detail::DecisionTree(rf.ext_param_));
+                    detail::dt_import_HDF5(h5context, rf.trees_.back(), *j);
+                }
+            }
+
+            // transfer to rf_array
+            rf_cascade.push_back(rf);
+
+            // step up one directory
+            h5context.cd_up();
+
+        }
+    }
+
+    //
+    if (pathname.size())
+        h5context.cd(cwd);
+    return true;
+}
+
 template<class T, class Tag>
 bool rf_import_HDF5(RandomForest<T, Tag> & rf,
                     HDF5File & h5context,
