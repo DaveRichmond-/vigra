@@ -498,9 +498,9 @@ class Node<i_ThresholdNode>
         }   break;
         }
 
-        return ((*comp_features)(row, column()) < threshold())? child(0):child(1);
-
         delete comp_features;
+
+        return ((*comp_features)(row, column()) < threshold())? child(0):child(1);
 
     }
 
