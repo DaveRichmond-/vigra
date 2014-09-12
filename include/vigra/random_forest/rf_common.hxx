@@ -202,7 +202,7 @@ class RandomForestOptions
     int                     max_offset_y_;    // offset_y is within [-,+] max_offset_y_ for Diff-, Offset-Features
     Shape2                  image_shape_;     // shape of image that is being processed.  required for changing x-y offsets into array index offsets.
     ArrayVector<int>        feature_mix_;     // mix of features to optimize over at each node.  Eg, [1,0,10] => use NormalFeatures, and DiffFeatures at 10 random offsets (but don't use OffsetFeatures)
-
+    int                     scale_;
 
     typedef ArrayVector<double> double_array;
     typedef std::map<std::string, double_array> map_type;
@@ -538,6 +538,12 @@ class RandomForestOptions
     RandomForestOptions & feature_mix(ArrayVector<int> in)
     {
         feature_mix_ = in;
+        return *this;
+    }
+
+    RandomForestOptions & scale(int in)
+    {
+        scale_ = in;
         return *this;
     }
 

@@ -1048,9 +1048,6 @@ class ThresholdSplit: public SplitBase<Tag>
         min_gini_.reshape(Shape2(featureCount_, size_Dim2));
         min_indices_.reshape(Shape2(featureCount_, size_Dim2));
         min_thresholds_.reshape(Shape2(featureCount_, size_Dim2));
-//        min_gini_.resize(featureCount_);
-//        min_indices_.resize(featureCount_);
-//        min_thresholds_.resize(featureCount_);
     }
 
 
@@ -1281,15 +1278,19 @@ class ThresholdSplit: public SplitBase<Tag>
         IndexIterator bestSplit =
                 std::partition(region.begin(), region.end(), sorter);
         // Save the ranges of the child stack entries.
-        childRegions[0].setRange(   region.begin()  , bestSplit       );
+        childRegions[0].setRange(region.begin(), bestSplit);
         childRegions[0].rule = region.rule;
         childRegions[0].rule.push_back(std::make_pair(1, 1.0));
-        childRegions[1].setRange(   bestSplit       , region.end()    );
+        childRegions[1].setRange(bestSplit, region.end());
         childRegions[1].rule = region.rule;
         childRegions[1].rule.push_back(std::make_pair(1, 1.0));
 
         // clear dynamically allocated memory
         delete comp_features;
+
+        // rescale the offsets stored at the node, to account for the fact that it might be learned on a down-sampled image
+        node.offset_x() = best_offset_x * SB::options_.scale_;
+        node.offset_y() = best_offset_y * SB::options_.scale_;
 
         return i_ThresholdNode;
     }
