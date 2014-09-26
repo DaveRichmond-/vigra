@@ -1289,8 +1289,8 @@ class ThresholdSplit: public SplitBase<Tag>
         delete comp_features;
 
         // rescale the offsets stored at the node, to account for the fact that it might be learned on a down-sampled image
-        node.offset_x() = best_offset_x * SB::options_.scale_;
-        node.offset_y() = best_offset_y * SB::options_.scale_;
+        node.offset_x() = best_offset_x * SB::options_.train_scale_;
+        node.offset_y() = best_offset_y * SB::options_.train_scale_;
 
         return i_ThresholdNode;
     }

@@ -476,7 +476,7 @@ class Node<i_ThresholdNode>
 //    }
 
     template<class U, class C>
-    BT::INT  next(MultiArrayView<2,U,C> const & features, int const & row, Shape2 const & image_shape) const
+    BT::INT  next(MultiArrayView<2,U,C> const & features, int const & row, Shape2 const & image_shape, float scale) const
     {
 
         // now i'm at a specific node, can create the corresponding features, using feature_type
@@ -490,11 +490,11 @@ class Node<i_ThresholdNode>
         }   break;
         case 1:
         {
-            comp_features = new OffsetFeatures<U,C>(features, image_shape, offset_x(), offset_y());
+            comp_features = new OffsetFeatures<U,C>(features, image_shape, offset_x()*scale, offset_y()*scale);
         }   break;
         case 2:
         {
-            comp_features = new DiffFeatures<U,C>(features, image_shape, offset_x(), offset_y());
+            comp_features = new DiffFeatures<U,C>(features, image_shape, offset_x()*scale, offset_y()*scale);
         }   break;
         }
 

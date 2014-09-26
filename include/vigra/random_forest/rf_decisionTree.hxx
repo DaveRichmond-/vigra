@@ -190,9 +190,11 @@ class DecisionTree
                 {
                     Node<i_ThresholdNode> node(topology_, parameters_, index);
 
-                    index = node.next(features, row, options_.image_shape_);
-//                    index = node.next(*comp_features, row);
+                    float scale = 1 / static_cast<float>(options_.test_scale_);
+                    index = node.next(features, row, options_.image_shape_, scale);
                     break;
+
+//                    index = node.next(*comp_features, row);
                 }
                 // kill HyperplaneNode and HypersphereNode for now, because I don't use them, and don't want to update for new feature types
                 /*
