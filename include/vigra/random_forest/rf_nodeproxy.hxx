@@ -498,9 +498,12 @@ class Node<i_ThresholdNode>
         }   break;
         }
 
+        BT::INT store_result;
+        store_result = ((*comp_features)(row, column()) < threshold())? child(0):child(1);
+
         delete comp_features;
 
-        return ((*comp_features)(row, column()) < threshold())? child(0):child(1);
+        return store_result;
 
     }
 
