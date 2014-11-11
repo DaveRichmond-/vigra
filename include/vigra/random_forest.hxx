@@ -1110,6 +1110,8 @@ void RandomForest<LabelType, PreprocessorTag>::
     
     for(int ii = 0; ii < static_cast<int>(trees_.size()); ++ii)
     {
+        std::cout << "learning tree " << ii << "... " << std::endl;
+
         //initialize First region/node/stack entry
         sampler
             .sample();  
