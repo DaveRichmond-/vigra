@@ -1098,6 +1098,8 @@ void RandomForest<LabelType, PreprocessorTag>::
 
     //initialize trees.
     trees_.resize(options_.tree_count_, DecisionTree_t(ext_param_));
+    for (int treeIndx = 0; treeIndx < options_.tree_count_; ++treeIndx)
+        trees_[treeIndx].options_ = options_;
 
     Sampler<Random_t > sampler(preprocessor.strata().begin(),
                                preprocessor.strata().end(),
