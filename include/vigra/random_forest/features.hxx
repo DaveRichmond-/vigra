@@ -153,6 +153,71 @@ public:
     }
 };
 
+template<class T, class C = StridedArrayTag>
+class ScaleInvDiffFeatures : public FeatureBase<T,C>
+{
+public:
+    typedef FeatureBase<T,C>    FB;
+
+    int offset_x1_,
+        offset_x2_,
+        offset_y1_,
+        offset_y2_;
+
+    ScaleInvDiffFeatures(MultiArrayView<2, T, C> const & original,
+                   MultiArrayShape<2>::type im_shape,
+                   int offset_x1,
+                   int offset_y1,
+                   int offset_x2,
+                   int offset_y2)
+        : FB(original, im_shape)
+    {
+        offset_x1_ = offset_x1;
+        offset_y1_ = offset_y1;
+        offset_x2_ = offset_x2;
+        offset_y2_ = offset_y2;
+    }
+
+    ~ScaleInvDiffFeatures() { }
+
+    T operator() (int i, int j) const
+    {
+        // there may be multiple images passed in simultaneously, appended into a big feature array.  calc corresponding offset and apply.
+        int L = FB::im_shape_[0]*FB::im_shape_[1];
+        int im_offset = static_cast<int>(floor(i/L))*L;
+//        int i_rel = i - im_offset;
+
+        // convert index i (sample #) to x,y position in image
+        int x = i % FB::im_shape_[0];
+        int y = static_cast<int>(floor(i/FB::im_shape_[0])) % FB::im_shape_[1];
+
+        // compute position of offset pixels
+        int xp1 = x + offset_x1_/FB::original_(i,j);
+        int yp1 = y + offset_y1_/FB::original_(i,j);
+
+        int xp2 = x + offset_x2_/FB::original_(i,j);
+        int yp2 = y + offset_y2_/FB::original_(i,j);
+
+        // deal with out of bounds indices.  just move them back to the border of the image.
+        if (xp1 >= FB::im_shape_[0]) xp1 = FB::im_shape_[0]-1;
+        else if (xp1 < 0) xp1 = 0;
+        if (yp1 >= FB::im_shape_[1]) yp1 = FB::im_shape_[1]-1;
+        else if (yp1 < 0) yp1 = 0;
+
+        if (xp2 >= FB::im_shape_[0]) xp2 = FB::im_shape_[0]-1;
+        else if (xp2 < 0) xp2 = 0;
+        if (yp2 >= FB::im_shape_[1]) yp2 = FB::im_shape_[1]-1;
+        else if (yp2 < 0) yp2 = 0;
+
+        // convert back to index into feature array, and correct for initial offset
+        int ip1 = yp1 * FB::im_shape_[0] + xp1 + im_offset;
+        int ip2 = yp2 * FB::im_shape_[0] + xp2 + im_offset;
+
+        // return
+        return FB::original_(ip1, j) - FB::original_(ip2, j);
+    }
+};
+
 
 }
 
