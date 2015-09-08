@@ -234,6 +234,18 @@ class NodeBase
         return topology_ + 7;
     }
 
+    /** Offset_X2 Range **/
+    Topology_type  offset_x2_begin() const
+    {
+        return topology_ + 8;
+    }
+
+    /** Offset_Y2 Range **/
+    Topology_type  offset_y2_begin() const
+    {
+        return topology_ + 9;
+    }
+
     /** where are the child nodes?
      */
     INT &           child(Int32 l)
@@ -408,7 +420,7 @@ class Node<i_ThresholdNode>
 
     Node(   BT::T_Container_type &   topology,
             BT::P_Container_type &   param)
-                :   BT(8,2,topology, param)
+                :   BT(10,2,topology, param)
     {
         BT::typeID() = i_ThresholdNode;
     }
@@ -416,11 +428,11 @@ class Node<i_ThresholdNode>
     Node(   BT::T_Container_type const     &   topology,
             BT::P_Container_type const     &   param,
             INT                                n)
-                :   BT(8,2,topology, param, n)
+                :   BT(10,2,topology, param, n)
     {}
 
     Node( BT & node_)
-        :   BT(8, 2, node_)
+        :   BT(10, 2, node_)
     {}
 
     // get the feature type, and offsets
@@ -449,6 +461,24 @@ class Node<i_ThresholdNode>
     int const & offset_y() const
     {
         return BT::offset_y_begin()[0];
+    }
+
+    int & offset_x2()
+    {
+        return BT::offset_x2_begin()[0];
+    }
+    int const & offset_x2() const
+    {
+        return BT::offset_x2_begin()[0];
+    }
+
+    int & offset_y2()
+    {
+        return BT::offset_y2_begin()[0];
+    }
+    int const & offset_y2() const
+    {
+        return BT::offset_y2_begin()[0];
     }
 
     double & threshold()
@@ -495,6 +525,10 @@ class Node<i_ThresholdNode>
         case 2:
         {
             comp_features = new DiffFeatures<U,C>(features, image_shape, offset_x()*scale, offset_y()*scale);
+        }   break;
+        case 3:
+        {
+            comp_features = new ScaleInvDiffFeatures<U,C>(features, image_shape, offset_x()*scale, offset_y()*scale, offset_x2()*scale, offset_y2()*scale);
         }   break;
         }
 
