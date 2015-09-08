@@ -191,12 +191,12 @@ public:
         int x = i % FB::im_shape_[0];
         int y = static_cast<int>(floor(i/FB::im_shape_[0])) % FB::im_shape_[1];
 
-        // compute position of offset pixels
-        int xp1 = x + offset_x1_/FB::original_(i,j);
-        int yp1 = y + offset_y1_/FB::original_(i,j);
+        // compute position of offset pixels (after scaling offsets)
+        int xp1 = x + offset_x1_/FB::original_(i,0);
+        int yp1 = y + offset_y1_/FB::original_(i,0);
 
-        int xp2 = x + offset_x2_/FB::original_(i,j);
-        int yp2 = y + offset_y2_/FB::original_(i,j);
+        int xp2 = x + offset_x2_/FB::original_(i,0);
+        int yp2 = y + offset_y2_/FB::original_(i,0);
 
         // deal with out of bounds indices.  just move them back to the border of the image.
         if (xp1 >= FB::im_shape_[0]) xp1 = FB::im_shape_[0]-1;
