@@ -51,6 +51,9 @@
 //#include "../hokashyap.hxx"
 //#include "vigra/rf_helpers.hxx"
 
+#include <cmath>
+#include <random>
+
 #include "rf_common.hxx"
 #include <vigra/random_forest/features.hxx>
 
@@ -1086,6 +1089,7 @@ class ThresholdSplit: public SplitBase<Tag>
         // import some of the RF options that are needed for generating contextual features
         int max_offset_x = SB::options_.max_offset_x_;
         int max_offset_y = SB::options_.max_offset_y_;
+        double std_offset_xy = SB::options_.std_offset_xy_;
         Shape2 image_shape = SB::options_.image_shape_;
 
         // find the best gini index
@@ -1094,6 +1098,8 @@ class ThresholdSplit: public SplitBase<Tag>
         int     best_feature_type   = 0;
         int     best_offset_x       = 0;
         int     best_offset_y       = 0;
+        int     best_offset_x2      = 0;
+        int     best_offset_y2      = 0;
         double  current_min_gini    = region_gini_;
         int     num2try             = features.shape(1);
 
@@ -1194,13 +1200,14 @@ class ThresholdSplit: public SplitBase<Tag>
 
             }
 
+            // Difference Features
             for(int i = 0; i < SB::options_.feature_mix_[2]; ++i)
             {
                 // calc random offsets
                 offset_x = randint(2*max_offset_x + 1) - max_offset_x;
                 offset_y = randint(2*max_offset_y + 1) - max_offset_y;
 
-                // assign comp_features to be an Offset Feature
+                // assign comp_features to be a Difference Feature
                 FeatureBase<T,C> * comp_features = nullptr;
                 comp_features = new DiffFeatures<T,C>(features, image_shape, offset_x, offset_y);
 
@@ -1240,6 +1247,65 @@ class ThresholdSplit: public SplitBase<Tag>
 
             }
 
+            // ScaleInvariantDifference Features
+
+            std::default_random_engine generator;
+            std::normal_distribution<double> distribution(0.0,std_offset_xy);
+
+            int offset_x1 = 0;
+            int offset_y1 = 0;
+            int offset_x2 = 0;
+            int offset_y2 = 0;
+
+            for(int i = 0; i < SB::options_.feature_mix_[3]; ++i)
+            {
+                // calc random offsets
+                offset_x1 = static_cast<int>(distribution(generator));
+                offset_y1 = static_cast<int>(distribution(generator));
+                offset_x2 = static_cast<int>(distribution(generator));
+                offset_y2 = static_cast<int>(distribution(generator));
+
+                // assign comp_features to be a ScaleInvOffset Feature
+                FeatureBase<T,C> * comp_features = nullptr;
+                comp_features = new ScaleInvDiffFeatures<T,C>(features, image_shape, offset_x1, offset_y1, offset_x2, offset_y2);
+
+                //this functor does all the work
+                bgfunc(*comp_features,
+                       splitColumns[k],
+                       labels,
+                       region.begin(), region.end(),
+                       region.classCounts());
+
+                min_gini_(k,counter)            = bgfunc.min_gini_;
+                min_indices_(k,counter)         = bgfunc.min_index_;
+                min_thresholds_(k,counter)      = bgfunc.min_threshold_;
+#ifdef CLASSIFIER_TEST
+                if(     bgfunc.min_gini_ < current_min_gini
+                        &&  !closeAtTolerance(bgfunc.min_gini_, current_min_gini))
+#else
+                if(bgfunc.min_gini_ < current_min_gini)
+#endif
+                {
+                    current_min_gini = bgfunc.min_gini_;
+                    childRegions[0].classCounts() = bgfunc.bestCurrentCounts[0];
+                    childRegions[1].classCounts() = bgfunc.bestCurrentCounts[1];
+                    childRegions[0].classCountsIsValid = true;
+                    childRegions[1].classCountsIsValid = true;
+
+                    bestSplitIndex      = k;
+                    bestSplitIndex2     = counter;     // now have a 2d array.  Need to know which column of min_thresholds_ stores the best threshold (why not just write the min_threshold directly?)
+                    best_feature_type   = 3;
+                    best_offset_x       = offset_x1;
+                    best_offset_y       = offset_y1;
+                    best_offset_x2      = offset_x2;
+                    best_offset_y2      = offset_y2;
+                    num2try             = SB::ext_param_.actual_mtry_;
+                }
+                ++counter;
+                // clear dynamically allocated memory
+                delete comp_features;
+
+            }
 
         }
         // did not find any suitable split
@@ -1257,6 +1323,8 @@ class ThresholdSplit: public SplitBase<Tag>
         node.feature_type() = best_feature_type;
         node.offset_x()     = best_offset_x;
         node.offset_y()     = best_offset_y;
+        node.offset_x2()    = best_offset_x2;
+        node.offset_y2()    = best_offset_y2;
 
         // partition the range according to the best dimension
         FeatureBase<T,C> * comp_features = nullptr;
@@ -1270,6 +1338,9 @@ class ThresholdSplit: public SplitBase<Tag>
             break;
         case 2:
             comp_features = new DiffFeatures<T,C>(features, image_shape, node.offset_x(), node.offset_y());
+            break;
+        case 3:
+            comp_features = new ScaleInvDiffFeatures<T,C>(features, image_shape, node.offset_x(), node.offset_y(), node.offset_x2(), node.offset_y2());
             break;
         }
         SortSamplesByDimensions<FeatureBase<T, C> >
@@ -1291,6 +1362,9 @@ class ThresholdSplit: public SplitBase<Tag>
         // rescale the offsets stored at the node, to account for the fact that it might be learned on a down-sampled image
         node.offset_x() = best_offset_x * SB::options_.train_scale_;
         node.offset_y() = best_offset_y * SB::options_.train_scale_;
+
+        node.offset_x2() = best_offset_x2 * SB::options_.train_scale_;
+        node.offset_y2() = best_offset_y2 * SB::options_.train_scale_;
 
         return i_ThresholdNode;
     }
