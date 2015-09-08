@@ -200,6 +200,7 @@ class RandomForestOptions
     // name random forest options for generating contextual features
     int                     max_offset_x_;    // offset_x is within [-,+] max_offset_x_ for Diff-, Offset-Features
     int                     max_offset_y_;    // offset_y is within [-,+] max_offset_y_ for Diff-, Offset-Features
+    double                  std_offset_xy_;   // offsets for scale invariant px difference features (body pose) are selected from Gaussian dist with mean=0, std=std_offset_xy
     Shape2                  image_shape_;     // shape of image that is being processed.  required for changing x-y offsets into array index offsets.
     ArrayVector<int>        feature_mix_;     // mix of features to optimize over at each node.  Eg, [1,0,10] => use NormalFeatures, and DiffFeatures at 10 random offsets (but don't use OffsetFeatures)
     int                     train_scale_;
@@ -527,6 +528,12 @@ class RandomForestOptions
     RandomForestOptions & max_offset_y(int in)
     {
         max_offset_y_ = in;
+        return *this;
+    }
+
+    RandomForestOptions & std_offset_xy(int in)
+    {
+        std_offset_xy_ = in;
         return *this;
     }
 
