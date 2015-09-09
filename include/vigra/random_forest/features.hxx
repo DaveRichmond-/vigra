@@ -182,6 +182,10 @@ public:
 
     T operator() (int i, int j) const
     {
+        // debug:
+//        std::cout << "\n" << "debug: " << std::endl;
+//        std::cout << "i,j: " << i << "," << j << std::endl;
+
         // there may be multiple images passed in simultaneously, appended into a big feature array.  calc corresponding offset and apply.
         int L = FB::im_shape_[0]*FB::im_shape_[1];
         int im_offset = static_cast<int>(floor(i/L))*L;
@@ -192,11 +196,20 @@ public:
         int y = static_cast<int>(floor(i/FB::im_shape_[0])) % FB::im_shape_[1];
 
         // compute position of offset pixels (after scaling offsets)
-        int xp1 = x + offset_x1_/FB::original_(i,0);
-        int yp1 = y + offset_y1_/FB::original_(i,0);
+        int xp1, yp1, xp2, yp2;
+        if (FB::original_(i,0) != 0){
+            xp1 = x + static_cast<float>(offset_x1_)/FB::original_(i,0);
+            yp1 = y + static_cast<float>(offset_y1_)/FB::original_(i,0);
 
-        int xp2 = x + offset_x2_/FB::original_(i,0);
-        int yp2 = y + offset_y2_/FB::original_(i,0);
+            xp2 = x + static_cast<float>(offset_x2_)/FB::original_(i,0);
+            yp2 = y + static_cast<float>(offset_y2_)/FB::original_(i,0);
+        } else {
+            xp1 = x;
+            yp1 = y;
+
+            xp2 = x;
+            yp2 = y;
+        }
 
         // deal with out of bounds indices.  just move them back to the border of the image.
         if (xp1 >= FB::im_shape_[0]) xp1 = FB::im_shape_[0]-1;
@@ -208,6 +221,12 @@ public:
         else if (xp2 < 0) xp2 = 0;
         if (yp2 >= FB::im_shape_[1]) yp2 = FB::im_shape_[1]-1;
         else if (yp2 < 0) yp2 = 0;
+
+        // debug
+//        std::cout << "offsets: " << offset_x1_ << "," << offset_y1_ << "," << offset_x2_ << "," << offset_y2_ << std::endl;
+//        std::cout << "distance(i,j): " << FB::original_(i,0) << std::endl;
+//        std::cout << "x,y: " << x << "," << y << std::endl;
+//        std::cout << "xp,yp: " << xp1 << "," << yp1 << "," << xp2 << "," << yp2 << std::endl;
 
         // convert back to index into feature array, and correct for initial offset
         int ip1 = yp1 * FB::im_shape_[0] + xp1 + im_offset;
