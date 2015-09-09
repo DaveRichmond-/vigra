@@ -1047,7 +1047,7 @@ class ThresholdSplit: public SplitBase<Tag>
         splitColumns.resize(featureCount_);
         for(int k=0; k<featureCount_; ++k)
             splitColumns[k] = k;
-        int size_Dim2 = SB::options_.feature_mix_[0] + SB::options_.feature_mix_[1] + SB::options_.feature_mix_[2];
+        int size_Dim2 = SB::options_.feature_mix_[0] + SB::options_.feature_mix_[1] + SB::options_.feature_mix_[2] + SB::options_.feature_mix_[3];
         min_gini_.reshape(Shape2(featureCount_, size_Dim2));
         min_indices_.reshape(Shape2(featureCount_, size_Dim2));
         min_thresholds_.reshape(Shape2(featureCount_, size_Dim2));
@@ -1249,7 +1249,8 @@ class ThresholdSplit: public SplitBase<Tag>
 
             // ScaleInvariantDifference Features
 
-            std::default_random_engine generator;
+            unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+            std::default_random_engine generator(seed);
             std::normal_distribution<double> distribution(0.0,std_offset_xy);
 
             int offset_x1 = 0;
@@ -1279,6 +1280,7 @@ class ThresholdSplit: public SplitBase<Tag>
                 min_gini_(k,counter)            = bgfunc.min_gini_;
                 min_indices_(k,counter)         = bgfunc.min_index_;
                 min_thresholds_(k,counter)      = bgfunc.min_threshold_;
+
 #ifdef CLASSIFIER_TEST
                 if(     bgfunc.min_gini_ < current_min_gini
                         &&  !closeAtTolerance(bgfunc.min_gini_, current_min_gini))
@@ -1308,6 +1310,7 @@ class ThresholdSplit: public SplitBase<Tag>
             }
 
         }
+
         // did not find any suitable split
         if(closeAtTolerance(current_min_gini, region_gini_))
             return  this->makeTerminalNode(features, labels, region, randint);      // doesn't actually use features, so i left this alone
