@@ -53,6 +53,7 @@
 
 #include <cmath>
 #include <random>
+#include <chrono>
 
 #include "rf_common.hxx"
 #include <vigra/random_forest/features.hxx>

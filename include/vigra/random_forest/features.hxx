@@ -22,7 +22,7 @@ public:
 
     MultiArrayShape<2>::type shape() const
     {
-        MultiArrayShape<2>::type(original_.size(0), original_.size(1));
+        return MultiArrayShape<2>::type(original_.size(0), original_.size(1));
     }
 
     int shape(int n) const

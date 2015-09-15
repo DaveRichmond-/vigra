@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 2.6)
 
 ##################################################
 #
@@ -7,10 +7,6 @@ cmake_minimum_required(VERSION 3.1)
 ##################################################
 
 PROJECT(vigra)
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 
 # read the current version from config_version.hxx
 file(READ ${vigra_SOURCE_DIR}/include/vigra/config_version.hxx VIGRA_VERSION_FILE)
@@ -29,17 +25,18 @@ SET(CMAKE_MODULE_PATH  ${CMAKE_MODULE_PATH}  ${vigra_SOURCE_DIR}/config)
 
 include(VigraSetDefaults)
 include(VigraCMakeUtils)
-include(VigraConfigureThreading)
 
 INCLUDE_DIRECTORIES(${vigra_SOURCE_DIR}/include)
-#SET(vigra_INC include/vigra/accessor.hxx)
+
 FILE(GLOB vigra_Headers
      ${vigra_SOURCE_DIR}/include/vigra/dummy.cxx
      ${vigra_SOURCE_DIR}/include/vigra/*.hxx
      ${vigra_SOURCE_DIR}/include/vigra/random_forest/*.hxx
      ${vigra_SOURCE_DIR}/include/vigra/delegate/*.hxx
      ${vigra_SOURCE_DIR}/include/vigra/delegate/detail/*.hxx)
-add_library(vigra SHARED ${vigra_Headers})
+   add_library(vigra SHARED ${vigra_Headers})
+   set_property(TARGET vigra PROPERTY CXX_STANDARD 11)
+   
 
 IF(VIGRA_STATIC_LIB)
     SET(LIBTYPE STATIC)
@@ -107,6 +104,7 @@ VIGRA_FIND_PACKAGE(PNG)
 VIGRA_FIND_PACKAGE(FFTW3 NAMES libfftw3-3 libfftw-3.3)
 VIGRA_FIND_PACKAGE(FFTW3F NAMES libfftw3f-3 libfftwf-3.3)
 
+
 IF(WITH_OPENEXR)
     VIGRA_FIND_PACKAGE(OpenEXR)
 ENDIF()
@@ -135,13 +133,16 @@ ENDIF()
 
 IF(WITH_BOOST)
     VIGRA_FIND_PACKAGE( Boost 1.40.0 COMPONENTS ${WITH_BOOST_COMPONENTS})
-    
-    if(Boost_FOUND AND WITH_BOOST_COMPONENTS)
-        # configure boost's autolink magic to use the right library name
-        # (default on Windows is a mangled name like 'boost_python-vc110-mt-1_51.lib')
-        if(("${Boost_PYTHON_LIBRARY}" MATCHES "boost_python\\.lib") OR
-           ("${Boost_SYSTEM_LIBRARY}" MATCHES "boost_system\\.lib"))
-            ADD_DEFINITIONS(-DBOOST_AUTO_LINK_NOMANGLE)
+
+    if(Boost_FOUND)
+        INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+        if(WITH_BOOST_COMPONENTS)
+            # configure boost's autolink magic to use the right library name
+            # (default on Windows is a mangled name like 'boost_python-vc110-mt-1_51.lib')
+            if(("${Boost_PYTHON_LIBRARY}" MATCHES "boost_python\\.lib") OR
+               ("${Boost_SYSTEM_LIBRARY}" MATCHES "boost_system\\.lib"))
+                ADD_DEFINITIONS(-DBOOST_AUTO_LINK_NOMANGLE)
+            endif()
         endif()
     endif()
 ENDIF()
@@ -161,6 +162,24 @@ ENDIF()
 IF(WITH_VALGRIND)
     FIND_PROGRAM(VALGRIND_EXECUTABLE valgrind)
 ENDIF()
+
+# Must be included AFTER boost is found.
+include(VigraDetectThreading)
+include(VigraConfigureThreading)
+
+# Should come after VigraDetectThreading, since that updates the -std flag.
+include(VigraDetectCppVersion)
+VIGRA_DETECT_CPP_VERSION()
+
+# Put this last, because it can interfere with VigraDetectCppVersion, above.
+FIND_PACKAGE( OpenMP )
+if(OPENMP_FOUND)
+message("OPENMP FOUND")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
+
 
 ##################################################
 #
@@ -331,7 +350,12 @@ INSTALL(FILES ${PROJECT_BINARY_DIR}/lib/vigra/CMake/VigraConfig.cmake
             ${PROJECT_BINARY_DIR}/lib/vigra/CMake/VigraConfigVersion.cmake
         DESTINATION lib${LIB_SUFFIX}/vigra)
 EXPORT(TARGETS vigraimpex FILE vigra-targets.cmake)
-
+INSTALL(TARGETS vigra
+        EXPORT vigra-targets
+        RUNTIME DESTINATION bin 
+        LIBRARY DESTINATION lib${LIB_SUFFIX} 
+        ARCHIVE DESTINATION lib${LIB_SUFFIX})
+      EXPORT(TARGETS vigra FILE vigra-targets.cmake)
 ##################################################
 #
 #     status output
