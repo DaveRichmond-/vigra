@@ -60,8 +60,11 @@ FUNCTION(VIGRA_ADD_TEST target)
     endif()
     
     # find the test executable
-    GET_TARGET_PROPERTY(${target}_executable ${target} LOCATION)
+    FIND_PATH(${target}_executable ${target})
     VIGRA_NATIVE_PATH(VIGRA_TEST_EXECUTABLE ${${target}_executable})
+    
+    # GET_TARGET_PROPERTY(${target}_executable ${target} LOCATION)
+    # VIGRA_NATIVE_PATH(VIGRA_TEST_EXECUTABLE ${${target}_executable})
     
     # Windows: set the DLL path
     set(VIGRA_PATH "")
@@ -71,7 +74,9 @@ FUNCTION(VIGRA_ADD_TEST target)
         SET(PATHSEP ":")
     ENDIF()
     FOREACH(lib ${LIBRARIES})
-        GET_TARGET_PROPERTY(p ${lib} LOCATION)
+      FIND_PATH(p ${lib})
+
+        #GET_TARGET_PROPERTY(p ${lib} LOCATION)
         if(p)
             GET_FILENAME_COMPONENT(p ${p} PATH)
             VIGRA_NATIVE_PATH(p ${p})
