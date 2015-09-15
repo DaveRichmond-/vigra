@@ -34,8 +34,8 @@ FILE(GLOB vigra_Headers
      ${vigra_SOURCE_DIR}/include/vigra/random_forest/*.hxx
      ${vigra_SOURCE_DIR}/include/vigra/delegate/*.hxx
      ${vigra_SOURCE_DIR}/include/vigra/delegate/detail/*.hxx)
-   add_library(vigradave SHARED ${vigra_Headers})
-   set_property(TARGET vigradave PROPERTY CXX_STANDARD 11)
+   add_library(vigra SHARED ${vigra_Headers})
+   set_property(TARGET vigra PROPERTY CXX_STANDARD 11)
    
 
 IF(VIGRA_STATIC_LIB)
@@ -350,12 +350,12 @@ INSTALL(FILES ${PROJECT_BINARY_DIR}/lib/vigra/CMake/VigraConfig.cmake
             ${PROJECT_BINARY_DIR}/lib/vigra/CMake/VigraConfigVersion.cmake
         DESTINATION lib${LIB_SUFFIX}/vigra)
 EXPORT(TARGETS vigraimpex FILE vigra-targets.cmake)
-INSTALL(TARGETS vigradave
+INSTALL(TARGETS vigra
         EXPORT vigra-targets
         RUNTIME DESTINATION bin 
         LIBRARY DESTINATION lib${LIB_SUFFIX} 
         ARCHIVE DESTINATION lib${LIB_SUFFIX})
-      EXPORT(TARGETS vigradave FILE vigra-targets.cmake)
+      EXPORT(TARGETS vigra FILE vigra-targets.cmake)
 ##################################################
 #
 #     status output
