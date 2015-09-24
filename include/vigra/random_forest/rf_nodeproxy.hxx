@@ -530,6 +530,11 @@ class Node<i_ThresholdNode>
         {
             comp_features = new ScaleInvDiffFeatures<U,C>(features, image_shape, offset_x()*scale, offset_y()*scale, offset_x2()*scale, offset_y2()*scale);
         }   break;
+        case 4:
+        {
+            comp_features = new ScaleInvOffsetFeatures<U,C>(features, image_shape, offset_x()*scale, offset_y()*scale);
+        }   break;
+
         }
 
         BT::INT store_result;

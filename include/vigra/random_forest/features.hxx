@@ -137,7 +137,6 @@ public:
         int yp = y + offset_y_;
 
         // deal with out of bounds indices.  just move them back to the border of the image.
-        // IN FUTURE, DO SOMETHING SMARTER HERE.  E.G., REFLECT IMAGE OVER THE BORDER?
         if (xp >= FB::im_shape_[0]) xp = FB::im_shape_[0]-1;
         else if (xp < 0) xp = 0;
         if (yp >= FB::im_shape_[1]) yp = FB::im_shape_[1]-1;
@@ -182,9 +181,6 @@ public:
 
     T operator() (int i, int j) const
     {
-        // debug:
-//        std::cout << "\n" << "debug: " << std::endl;
-//        std::cout << "i,j: " << i << "," << j << std::endl;
 
         // there may be multiple images passed in simultaneously, appended into a big feature array.  calc corresponding offset and apply.
         int L = FB::im_shape_[0]*FB::im_shape_[1];
@@ -222,12 +218,6 @@ public:
         if (yp2 >= FB::im_shape_[1]) yp2 = FB::im_shape_[1]-1;
         else if (yp2 < 0) yp2 = 0;
 
-        // debug
-//        std::cout << "offsets: " << offset_x1_ << "," << offset_y1_ << "," << offset_x2_ << "," << offset_y2_ << std::endl;
-//        std::cout << "distance(i,j): " << FB::original_(i,0) << std::endl;
-//        std::cout << "x,y: " << x << "," << y << std::endl;
-//        std::cout << "xp,yp: " << xp1 << "," << yp1 << "," << xp2 << "," << yp2 << std::endl;
-
         // convert back to index into feature array, and correct for initial offset
         int ip1 = yp1 * FB::im_shape_[0] + xp1 + im_offset;
         int ip2 = yp2 * FB::im_shape_[0] + xp2 + im_offset;
@@ -237,6 +227,61 @@ public:
     }
 };
 
+template<class T, class C = StridedArrayTag>
+class ScaleInvOffsetFeatures : public FeatureBase<T,C>
+{
+public:
+    typedef FeatureBase<T,C>    FB;
+
+    int offset_x_, offset_y_;
+
+    ScaleInvOffsetFeatures(MultiArrayView<2, T, C> const & original,
+                   MultiArrayShape<2>::type im_shape,
+                   int offset_x,
+                   int offset_y)
+        : FB(original, im_shape)
+    {
+        offset_x_ = offset_x;
+        offset_y_ = offset_y;
+    }
+
+    ~ScaleInvOffsetFeatures() { }
+
+    T operator() (int i, int j) const
+    {
+        // there may be multiple images passed in simultaneously, appended into a big feature array.  calc corresponding offset and apply.
+        int L = FB::im_shape_[0]*FB::im_shape_[1];
+        int im_offset = static_cast<int>(floor(i/L))*L;
+        i -= im_offset;
+
+        // convert index i (sample #) to x,y position in image
+        int x = i % FB::im_shape_[0];
+        int y = static_cast<int>(floor(i/FB::im_shape_[0]));
+
+        // find offset pixel
+        int xp, yp;
+        if (FB::original_(i,0) != 0){
+            xp = x + static_cast<float>(offset_x_)/FB::original_(i,0);
+            yp = y + static_cast<float>(offset_y_)/FB::original_(i,0);
+        } else {
+            xp = x;
+            yp = y;
+        }
+
+        // deal with out of bounds indices.  just move them back to the border of the image.
+        if (xp >= FB::im_shape_[0]) xp = FB::im_shape_[0]-1;
+        else if (xp < 0) xp = 0;
+        if (yp >= FB::im_shape_[1]) yp = FB::im_shape_[1]-1;
+        else if (yp < 0) yp = 0;
+
+        // convert back to index into feature array, and correct for initial offset.  note: i is not corrected, b/c not used again.
+        int ip = yp * FB::im_shape_[0] + xp + im_offset;
+
+        // return
+        return FB::original_(ip, j);
+    }
+
+};
 
 }
 
