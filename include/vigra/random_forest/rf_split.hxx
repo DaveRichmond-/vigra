@@ -1259,105 +1259,112 @@ class ThresholdSplit: public SplitBase<Tag>
             int offset_x2 = 0;
             int offset_y2 = 0;
 
-            for(int i = 0; i < SB::options_.feature_mix_[3]; ++i)
+            // only try using scale invariant difference features on distance map (doesn't seem to help on prob maps, and takes a lot of time)
+            if (splitColumns[k] == 0)
             {
-                // calc random offsets
-                offset_x1 = static_cast<int>(distribution(generator));
-                offset_y1 = static_cast<int>(distribution(generator));
-                offset_x2 = static_cast<int>(distribution(generator));
-                offset_y2 = static_cast<int>(distribution(generator));
-
-                // assign comp_features to be a ScaleInvOffset Feature
-                FeatureBase<T,C> * comp_features = nullptr;
-                comp_features = new ScaleInvDiffFeatures<T,C>(features, image_shape, offset_x1, offset_y1, offset_x2, offset_y2);
-
-                //this functor does all the work
-                bgfunc(*comp_features,
-                       splitColumns[k],
-                       labels,
-                       region.begin(), region.end(),
-                       region.classCounts());
-
-                min_gini_(k,counter)            = bgfunc.min_gini_;
-                min_indices_(k,counter)         = bgfunc.min_index_;
-                min_thresholds_(k,counter)      = bgfunc.min_threshold_;
-
-#ifdef CLASSIFIER_TEST
-                if(     bgfunc.min_gini_ < current_min_gini
-                        &&  !closeAtTolerance(bgfunc.min_gini_, current_min_gini))
-#else
-                if(bgfunc.min_gini_ < current_min_gini)
-#endif
+                for(int i = 0; i < SB::options_.feature_mix_[3]; ++i)
                 {
-                    current_min_gini = bgfunc.min_gini_;
-                    childRegions[0].classCounts() = bgfunc.bestCurrentCounts[0];
-                    childRegions[1].classCounts() = bgfunc.bestCurrentCounts[1];
-                    childRegions[0].classCountsIsValid = true;
-                    childRegions[1].classCountsIsValid = true;
+                    // calc random offsets
+                    offset_x1 = static_cast<int>(distribution(generator));
+                    offset_y1 = static_cast<int>(distribution(generator));
+                    offset_x2 = static_cast<int>(distribution(generator));
+                    offset_y2 = static_cast<int>(distribution(generator));
 
-                    bestSplitIndex      = k;
-                    bestSplitIndex2     = counter;     // now have a 2d array.  Need to know which column of min_thresholds_ stores the best threshold (why not just write the min_threshold directly?)
-                    best_feature_type   = 3;
-                    best_offset_x       = offset_x1;
-                    best_offset_y       = offset_y1;
-                    best_offset_x2      = offset_x2;
-                    best_offset_y2      = offset_y2;
-                    num2try             = SB::ext_param_.actual_mtry_;
+                    // assign comp_features to be a ScaleInvOffset Feature
+                    FeatureBase<T,C> * comp_features = nullptr;
+                    comp_features = new ScaleInvDiffFeatures<T,C>(features, image_shape, offset_x1, offset_y1, offset_x2, offset_y2);
+
+                    //this functor does all the work
+                    bgfunc(*comp_features,
+                           splitColumns[k],
+                           labels,
+                           region.begin(), region.end(),
+                           region.classCounts());
+
+                    min_gini_(k,counter)            = bgfunc.min_gini_;
+                    min_indices_(k,counter)         = bgfunc.min_index_;
+                    min_thresholds_(k,counter)      = bgfunc.min_threshold_;
+
+    #ifdef CLASSIFIER_TEST
+                    if(     bgfunc.min_gini_ < current_min_gini
+                            &&  !closeAtTolerance(bgfunc.min_gini_, current_min_gini))
+    #else
+                    if(bgfunc.min_gini_ < current_min_gini)
+    #endif
+                    {
+                        current_min_gini = bgfunc.min_gini_;
+                        childRegions[0].classCounts() = bgfunc.bestCurrentCounts[0];
+                        childRegions[1].classCounts() = bgfunc.bestCurrentCounts[1];
+                        childRegions[0].classCountsIsValid = true;
+                        childRegions[1].classCountsIsValid = true;
+
+                        bestSplitIndex      = k;
+                        bestSplitIndex2     = counter;     // now have a 2d array.  Need to know which column of min_thresholds_ stores the best threshold (why not just write the min_threshold directly?)
+                        best_feature_type   = 3;
+                        best_offset_x       = offset_x1;
+                        best_offset_y       = offset_y1;
+                        best_offset_x2      = offset_x2;
+                        best_offset_y2      = offset_y2;
+                        num2try             = SB::ext_param_.actual_mtry_;
+                    }
+                    ++counter;
+                    // clear dynamically allocated memory
+                    delete comp_features;
+
                 }
-                ++counter;
-                // clear dynamically allocated memory
-                delete comp_features;
-
             }
+
 
             // ScaleInvOffset Features
-            for(int i = 0; i < SB::options_.feature_mix_[4]; ++i)
+            if (splitColumns[k] != 0) // only try using scale invariant offset features on prob maps
             {
-                // calc random offsets
-                offset_x1 = static_cast<int>(distribution(generator));
-                offset_y1 = static_cast<int>(distribution(generator));
-
-                // assign comp_features to be a ScaleInvOffset Feature
-                FeatureBase<T,C> * comp_features = nullptr;
-                comp_features = new ScaleInvOffsetFeatures<T,C>(features, image_shape, offset_x1, offset_y1);
-
-                //this functor does all the work
-                bgfunc(*comp_features,
-                       splitColumns[k],
-                       labels,
-                       region.begin(), region.end(),
-                       region.classCounts());
-
-                min_gini_(k,counter)            = bgfunc.min_gini_;
-                min_indices_(k,counter)         = bgfunc.min_index_;
-                min_thresholds_(k,counter)      = bgfunc.min_threshold_;
-
-#ifdef CLASSIFIER_TEST
-                if(     bgfunc.min_gini_ < current_min_gini
-                        &&  !closeAtTolerance(bgfunc.min_gini_, current_min_gini))
-#else
-                if(bgfunc.min_gini_ < current_min_gini)
-#endif
+                for(int i = 0; i < SB::options_.feature_mix_[4]; ++i)
                 {
-                    current_min_gini = bgfunc.min_gini_;
-                    childRegions[0].classCounts() = bgfunc.bestCurrentCounts[0];
-                    childRegions[1].classCounts() = bgfunc.bestCurrentCounts[1];
-                    childRegions[0].classCountsIsValid = true;
-                    childRegions[1].classCountsIsValid = true;
+                    // calc random offsets
+                    offset_x1 = static_cast<int>(distribution(generator));
+                    offset_y1 = static_cast<int>(distribution(generator));
 
-                    bestSplitIndex      = k;
-                    bestSplitIndex2     = counter;     // now have a 2d array.  Need to know which column of min_thresholds_ stores the best threshold (why not just write the min_threshold directly?)
-                    best_feature_type   = 4;
-                    best_offset_x       = offset_x1;
-                    best_offset_y       = offset_y1;
-                    num2try             = SB::ext_param_.actual_mtry_;
+                    // assign comp_features to be a ScaleInvOffset Feature
+                    FeatureBase<T,C> * comp_features = nullptr;
+                    comp_features = new ScaleInvOffsetFeatures<T,C>(features, image_shape, offset_x1, offset_y1);
+
+                    //this functor does all the work
+                    bgfunc(*comp_features,
+                           splitColumns[k],
+                           labels,
+                           region.begin(), region.end(),
+                           region.classCounts());
+
+                    min_gini_(k,counter)            = bgfunc.min_gini_;
+                    min_indices_(k,counter)         = bgfunc.min_index_;
+                    min_thresholds_(k,counter)      = bgfunc.min_threshold_;
+
+    #ifdef CLASSIFIER_TEST
+                    if(     bgfunc.min_gini_ < current_min_gini
+                            &&  !closeAtTolerance(bgfunc.min_gini_, current_min_gini))
+    #else
+                    if(bgfunc.min_gini_ < current_min_gini)
+    #endif
+                    {
+                        current_min_gini = bgfunc.min_gini_;
+                        childRegions[0].classCounts() = bgfunc.bestCurrentCounts[0];
+                        childRegions[1].classCounts() = bgfunc.bestCurrentCounts[1];
+                        childRegions[0].classCountsIsValid = true;
+                        childRegions[1].classCountsIsValid = true;
+
+                        bestSplitIndex      = k;
+                        bestSplitIndex2     = counter;     // now have a 2d array.  Need to know which column of min_thresholds_ stores the best threshold (why not just write the min_threshold directly?)
+                        best_feature_type   = 4;
+                        best_offset_x       = offset_x1;
+                        best_offset_y       = offset_y1;
+                        num2try             = SB::ext_param_.actual_mtry_;
+                    }
+                    ++counter;
+                    // clear dynamically allocated memory
+                    delete comp_features;
+
                 }
-                ++counter;
-                // clear dynamically allocated memory
-                delete comp_features;
-
             }
-
         }
 
         // did not find any suitable split
